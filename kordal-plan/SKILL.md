@@ -35,14 +35,15 @@ When `$ARGUMENTS` starts with `feature`, plan the rest of it by the "Plan a feat
 
 ## Update a scaffolded project
 
-When `$ARGUMENTS` is `update`, bring the project's scaffold up to date instead of planning. The update changes the tooling every task runs on, so it belongs between two milestones.
+When `$ARGUMENTS` is `update` or `upgrade`, bring the project's scaffold up to date instead of planning. The update changes the tooling every task runs on, so it belongs between two milestones.
 
 1. **Place.** Work on main with a clean tree. Stop, and say what has to finish first, when `node scripts/agent-local.mjs next` lists a `CLAIMED` task or the integration branch holds work main lacks (`git merge-base --is-ancestor <integration branch> main` fails).
 2. **Migrate the names.** Where `docs/plans/backlog.json` still has `"mvp"`, run `node ${CLAUDE_SKILL_DIR}/migrate.mjs` in the project root. It renames the manifest key, the integration branch, the `docs/product/mvp<N>*` documents with their links, and on GitHub the branch and the milestone; it commits nothing. Commit its changes as their own commit.
 3. **Diff.** Run `bash ${CLAUDE_SKILL_DIR}/bootstrap.sh --diff`. It prints what changed in the scaffold since the version the project records, and every scaffold file the project lacks. A project with no recorded version gets a file-by-file comparison instead. Show the owner the list.
 4. **Apply** each scaffold change to the project's file, keeping the project's own content; copy the missing files.
-5. **Check.** Run `node scripts/agent-summary.mjs`, `make agent-check` and `bash tests/integration/check-docs.sh`. Done when the last two pass.
-6. **Record.** Run `bash ${CLAUDE_SKILL_DIR}/bootstrap.sh --stamp`, commit the update as its own commit and move the integration branch to it with `git branch -f <integration branch> main`. With a `repository`, push main and run `node scripts/agent-local.mjs publish`; done when `node scripts/agent-issues.mjs sync --check` passes.
+5. **Bring the open plans up to the template.** Every plan in `planned/` and `active/` gets each section the template now has and the plan lacks, written from the plan's own content: a Flow drawn from its acceptance criteria, not a placeholder. Completed plans stay as they are. Where the scope document lacks a section the planning workflow now asks for, add it with the owner.
+6. **Check.** Run `node scripts/agent-summary.mjs`, `make agent-check` and `bash tests/integration/check-docs.sh`. Done when the last two pass. Open the summary page in the owner's browser and say that every diagram renders there; in the Markdown files they are Mermaid source.
+7. **Record.** Run `bash ${CLAUDE_SKILL_DIR}/bootstrap.sh --stamp`, commit the update as its own commit and move the integration branch to it with `git branch -f <integration branch> main`. With a `repository`, push main and run `node scripts/agent-local.mjs publish`; done when `node scripts/agent-issues.mjs sync --check` passes.
 
 ## Run the stages as gates
 
@@ -57,7 +58,7 @@ Three decisions belong to the owner. At each, present one recommendation with it
 | Stage | The owner decides |
 | --- | --- |
 | 2. Choose one user outcome | Target user, priority, and the outcome sentence |
-| 3. Map the journey and agree scope | The complete scope proposal: capabilities, exclusions, deferred prerequisites |
+| 3. Map the journey and agree scope | The prototype of a visible outcome, on its target devices; then the complete scope proposal: capabilities, exclusions, deferred prerequisites, test budget |
 | 4. Resolve major uncertainties | A revised proposal, when a finding changes the agreed outcome or scope |
 
 Everything else is yours to resolve: routine engineering choices, task splits, dependency order.
@@ -65,7 +66,7 @@ Everything else is yours to resolve: routine engineering choices, task splits, d
 ## Skills per stage
 
 - **Stage 1, baseline**: `research`, for the survey of existing solutions and other evidence that lives outside the repository.
-- **Stage 3, scope**: `grilling`, on the draft scope before it goes to the owner; `prototype`, when a journey question needs something to click.
+- **Stage 3, scope**: `grilling`, on the draft scope before it goes to the owner; `prototype`, when a journey question needs something to click, and always for an outcome the user sees: show it to the owner at real size on each target device, in the browser pane or on the device itself.
 - **Stage 4, uncertainties**: `prototype` for a bounded question; `domain-modeling` for each Proposed ADR.
 - **Stage 5, backlog**: `writing-for-agents`, since every task plan is read by the agent that implements it. Open the implementation summary in the owner's browser (`open docs/product/milestone<N>-summary.html`) and say what it shows in three lines.
 

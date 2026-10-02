@@ -49,7 +49,7 @@ Six stages; a stage closes only with evidence. The owner decides at the stages i
 | --- | --- | --- |
 | 1 | Baseline: what exists, what users need, what existing solutions do better (web search) | `docs/product/vision.md`, `milestone<N>-research.md` |
 | 2 | **One user outcome**: "A [user] can [job], demonstrated by [result]" | `docs/product/milestone<N>.md` |
-| 3 | **Journey and scope**: capabilities, exclusions, acceptance scenarios | `milestone<N>.md` completed |
+| 3 | **Journey and scope**: capabilities, exclusions, acceptance scenarios, test budget; a prototype at real size for anything the user sees | `milestone<N>.md` completed |
 | 4 | Uncertainties: research, prototypes, architecture decisions (**only if a finding changes the scope**) | Proposed ADRs in `docs/adr/` |
 | 5 | Backlog: one plan per task with acceptance criteria and a flow diagram | `docs/plans/planned/`, `backlog.json`, `milestone<N>-summary.html` |
 | 6 | Handoff: issues created, integration branch `milestone<N>`, structure checks | First ready task |
@@ -72,6 +72,9 @@ Per task: claim, implement, gate, review, check, finish, report.
 - **Review.** The diff on two axes, Standards and Spec, by the `kordal-reviewer` agent: Opus 5.5 at high effort, in a context that has not seen the implementation, read-only. Recorded in the plan; an unreviewed task cannot be finished.
 - **Check.** Claude starts the product and walks the task's flow as a user would, including the failure paths; nothing is recorded but the ticked criteria.
 - **Report.** What was added, what was verified, how to try it, what is next; also posted on the task's issue.
+
+- **First look.** The first task that changes what a user sees ends with a stop: the owner looks at the running product on the target devices before the rest is built on it.
+- **Budget.** The scope names the test data size and how long the gates may take; `gate` reports its duration and says when it went over.
 
 A milestone ends with its acceptance task: a review of the whole milestone, then a test list for the owner in `docs/product/milestone<N>-test.md`. Each failure the owner reports becomes a task. Only after the owner accepts does `/kordal-build-ship` open the pull request.
 

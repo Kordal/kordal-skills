@@ -90,13 +90,17 @@ function main() {
     const gate = argument ?? 'task-check';
     assert(gateNames.includes(gate), `Unknown gate ${gate}; use ${gateNames.join(' or ')}`);
     assert(!git('status', '--porcelain'), 'Commit your work first: a gate is recorded for a commit');
-    const sha = git('rev-parse', 'HEAD');
+    const sha = git('rev-parse', 'HEAD'), started = Date.now();
     const result = spawnSync(process.env.AGENT_MAKE ?? 'make', [gate], { cwd: root, stdio: 'inherit' });
+    const seconds = Math.round((Date.now() - started) / 1000), took = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
     assert(result.status === 0, `${gate} failed on ${sha}; nothing recorded`);
     assert(git('rev-parse', 'HEAD') === sha && !git('status', '--porcelain'), `The checkout changed while ${gate} ran; nothing recorded`);
     fs.mkdirSync(path.dirname(gateRecord(sha, gate)), { recursive: true });
-    fs.writeFileSync(gateRecord(sha, gate), `${new Date().toISOString()}\n`);
-    console.log(`${gate} passed on ${sha}; recorded.`);
+    fs.writeFileSync(gateRecord(sha, gate), `${new Date().toISOString()} ${seconds}s\n`);
+    console.log(`${gate} passed on ${sha} in ${took}; recorded.`);
+    // The budget the owner agreed at planning: a gate over it is reported, not refused.
+    const budget = manifest.budgets?.[{ 'task-check': 'task_gate_minutes', 'pr-check': 'full_gate_minutes' }[gate]];
+    if (budget && seconds > budget * 60) console.log(`WARN: ${gate} took ${took}, over its budget of ${budget} minutes. Tell the owner; a slow stage of the task gate belongs in MILESTONE_STAGES.`);
     return;
   }
   const task = taskById(manifest, argument);

@@ -34,6 +34,10 @@ export function validateManifest(manifest, read = readLocal) {
   assert(Array.isArray(manifest.tasks), 'backlog.json has no tasks list');
   // The GitHub repository whose issues mirror the tasks; optional.
   assert(manifest.repository == null || /^[\w.-]+\/[\w.-]+$/.test(manifest.repository), 'Invalid repository; use owner/name');
+  // How long a gate may take, agreed with the owner at planning; optional.
+  for (const [name, minutes] of Object.entries(manifest.budgets ?? {})) {
+    assert(['task_gate_minutes', 'full_gate_minutes'].includes(name) && typeof minutes === 'number' && minutes > 0, `Invalid budget: ${name}`);
+  }
   const ids = new Set(), issues = new Set();
   for (const task of manifest.tasks) {
     assert(/^[A-Z]+-\d{3}$/.test(task.id) && !ids.has(task.id), `Invalid/duplicate task ID: ${task.id}`);

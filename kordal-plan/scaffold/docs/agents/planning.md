@@ -44,9 +44,11 @@ Done when the owner has selected an outcome and `milestone<N>.md` records it wit
 
 Describe the user's starting situation, actions, decisions and final result. Include applicable failure cases such as missing or stale data, insufficient permissions, concurrent changes and restarts. Use a diagram or a small prototype when it resolves a concrete uncertainty.
 
-Complete the draft of `docs/product/milestone<N>.md`: after the outcome, the included capabilities, exclusions, acceptance scenarios, external prerequisites and evidence limits. State the release impact of each unresolved prerequisite. Present the complete proposal and its tradeoffs for the owner's scope decision. Once agreed, state the milestone in one sentence under Product scope in AGENTS.md.
+Where the outcome is something the user sees, a prototype is required: build it at real size, on every device and screen size the milestone targets, with realistic content, and have the owner look at it there and approve it. A design approved on a large mockup and built for a phone is the costliest mistake this workflow can make: it surfaces only after every task is delivered.
 
-Done when the agreed scope describes a complete useful workflow and observable success, with explicit exclusions. Planning ahead may proceed while the current milestone is active; the draft leaves its delivery scope and queue as they are.
+Complete the draft of `docs/product/milestone<N>.md`: after the outcome, the included capabilities, exclusions, acceptance scenarios, external prerequisites and evidence limits. Add a "Test budget" section: the size of the test data (how many users, records, machines) and how long the task gate and the full gate may take, as numbers. Record the two limits as `budgets` in [backlog.json](../plans/backlog.json); the gate measures itself against them. State the release impact of each unresolved prerequisite. Present the complete proposal and its tradeoffs for the owner's scope decision. Once agreed, state the milestone in one sentence under Product scope in AGENTS.md.
+
+Done when the agreed scope describes a complete useful workflow and observable success, with explicit exclusions and a test budget, and the owner has approved the prototype of a visible outcome on its target devices. Planning ahead may proceed while the current milestone is active; the draft leaves its delivery scope and queue as they are.
 
 ## 4. Resolve major uncertainties
 

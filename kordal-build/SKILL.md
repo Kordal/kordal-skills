@@ -61,7 +61,7 @@ Then deliver the queue in rounds, until `next` lists no `READY` task and none th
 4. **Dispatch** one `kordal-builder` agent per task (a generic subagent where that agent is missing), all in one message so that they run side by side, each in the foreground: "Read `${CLAUDE_SKILL_DIR}/SKILL.md` and deliver task `<ID>` by its section 'Deliver one task', in `<its checkout>`. The task is claimed on its branch there. Give the product its own ports and data in this checkout, as the workflow says. End with the verbatim output of `finish` and the status update."
 5. **Verify** each result yourself: `next` no longer lists the task. A task an agent left unfinished is yours to resume by "Deliver one task" in its checkout. Where `next` reports GitHub out of sync, run `node scripts/agent-local.mjs publish`.
 6. **Clean up** the round's checkouts: `git worktree remove ../<project>.worktrees/<id>`.
-7. **Relay** the status updates in task order, and start the next round without waiting for an answer.
+7. **Relay** the status updates in task order, and start the next round without waiting for an answer, except after the task that owes the owner a [first look](#stop-and-ask): put that task in a round of its own.
 
 Tasks of one round finish one after the other: the second to finish finds the integration branch moved, merges it and gates again, as the workflow says. A project whose gate cannot run in two checkouts at once, because of fixed ports or one shared database, is delivered with `all serial`; when the gates of a first parallel round collide, finish that round one task at a time, continue serially and tell the owner.
 
@@ -71,7 +71,7 @@ The milestone's acceptance task is yours, not a subagent's: when it is the task 
 
 Follow the workflow's "The acceptance task" section on the task's own branch:
 
-1. **Milestone review.** Run [the review](#the-review) on the diff since main. Add each confirmed finding as a task, deliver it by "Deliver one task", merge the integration branch and review again. Done when the review of the current head has no open finding and `docs/product/milestone<N>-test.md` records it.
+1. **Milestone review.** Run [the review](#the-review) on the diff since main. Add each confirmed high or medium finding as a task and deliver it by "Deliver one task"; list the low ones under "Follow-up" in the test document. Then merge the integration branch and review once more, the diff of the fix tasks only. Done when that review has no high or medium finding and `docs/product/milestone<N>-test.md` records both reviews.
 2. **Owner acceptance.** Complete the test document, start the product, give the owner the checklist and how to reach the running product, and stop. The owner's test is a gate; the milestone waits there until the owner answers. Deliver every failure the owner reports as a task, then hand the updated checklist back.
 3. **Finish.** When the owner says the milestone passes, record it in the test document, run the full gates (`gate pr-check`, `gate premerge-check`), finish the task and tell the owner `/kordal-build-ship` is next.
 
@@ -94,4 +94,6 @@ Keep the queue moving; the owner reads the status updates as they arrive and int
 - a change to the agreed scope or to a task's contract;
 - a fact or decision only the owner has;
 - an external blocker;
-- a gate that failed three times on the same cause: report the cause and what you tried.
+- a gate that failed three times on the same cause: report the cause and what you tried;
+- the workflow's "First look": the first task that changes what a user sees;
+- a step that will run longer than the milestone's test budget allows, or a gate that reports it took longer than its budget.

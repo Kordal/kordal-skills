@@ -44,7 +44,7 @@ Resolve Proposed ADRs the task needs and mark them Accepted in the task. Record 
 
 Change the manifest and the plan together if the task contract changes.
 
-Iterate with `make lint` and `make test` (nothing running). Give each worktree its own isolated environment (ports, data, a git-ignored `.env`), because other worktrees run their own.
+Iterate with `make lint` and `make test` (nothing running). Stay inside the milestone's test budget: the data size and the gate times its scope names. A single step that will run longer than the full gate's budget, such as a load, a measurement or a build, is a reason to stop and ask before it starts. Give each worktree its own isolated environment (ports, data, a git-ignored `.env`), because other worktrees run their own.
 
 Validate through the public behaviour named in the plan. UI rendering alone does not prove persistence; unit tests alone do not prove cross-component behaviour. Record failures and environmental blockers accurately. Real-source credentials stay outside Git and logs.
 
@@ -83,6 +83,10 @@ After every `finish`, give the owner a status update, then select the next task 
 
 With a GitHub mirror, post the same update on the task's issue: write it to a file outside the repository and run `node scripts/agent-issues.mjs comment <ID> <file>`.
 
+## First look
+
+The first task of a milestone that changes what a user sees ends with a stop. After its status update, leave the product running on every device the milestone targets, tell the owner how to reach it, and wait: the owner looks at the real thing before the rest is built on it. Record the owner's answer under "First look" in `docs/product/milestone<N>.md`, with the task and the date. A change the owner asks for is a change of scope: plan it before the queue continues.
+
 ## Gates
 
 | Gate | When | Stages |
@@ -105,7 +109,9 @@ The last task of every milestone is its acceptance task. It depends on every oth
 
 Review the whole milestone before the owner tests it: the diff from main to this branch, on the same two axes as a task. Standards now covers how the tasks fit together: duplicated logic, inconsistent naming and interfaces between tasks, a decision one task made and another ignored. Spec is every acceptance scenario of `docs/product/milestone<N>.md` against the assembled product.
 
-Each confirmed finding becomes a task, delivered through this workflow; then merge the integration branch into the acceptance branch and review again. Done when a review of the current head has no open finding; record that review, with its commit and its findings, in the "Review" section that opens the test document.
+Grade each confirmed finding. **High:** a wrong result, lost data or a security hole. **Medium:** an acceptance scenario not met, or a defect on a path users reach. **Low:** names, comments, duplication, documentation. High and medium findings become tasks, delivered through this workflow; low findings are listed under "Follow-up" in the test document for the owner to decide.
+
+After the fix tasks, merge the integration branch into the acceptance branch and review once more: only the diff of those fix tasks, not the milestone again. Done when that review has no high or medium finding; record both reviews, with their commits and findings, in the "Review" section that opens the test document.
 
 ### Owner acceptance
 

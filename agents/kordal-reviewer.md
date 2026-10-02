@@ -31,4 +31,4 @@ Does the change deliver what was asked? Judge against the task's plan, or the mi
 
 ## Report
 
-Under 400 words. One line per finding: `file:line`, what is wrong, the failure scenario or the quoted rule, and `confirmed` or `unverified`. Order by severity. With nothing to report, write "No findings" and name what you checked.
+Under 400 words. One line per finding: its grade, `file:line`, what is wrong, the failure scenario or the quoted rule, and `confirmed` or `unverified`. Grades: **high**, a wrong result, lost data or a security hole; **medium**, a criterion not met or a defect on a path users reach; **low**, names, comments, duplication, documentation. Order by grade. With nothing to report, write "No findings" and name what you checked.

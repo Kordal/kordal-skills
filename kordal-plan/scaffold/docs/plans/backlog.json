@@ -2,5 +2,6 @@
   "version": 1,
   "milestone": 1,
   "integration_branch": "milestone1",
+  "budgets": { "task_gate_minutes": 3, "full_gate_minutes": 30 },
   "tasks": []
 }

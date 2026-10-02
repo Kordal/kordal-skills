@@ -64,7 +64,7 @@ test('finish puts a gated task on the integration branch and unblocks its depend
   assert.match(failed.stderr, /task-check failed/);
   assert.match(f.cli(['finish', 'CAP-001']).stderr, /No passed task-check covers/, 'a failed gate records nothing');
   const passed = f.cli(['gate']);
-  assert.match(passed.stdout, /make task-check\n[\s\S]*task-check passed on [a-f0-9]{40}; recorded\./);
+  assert.match(passed.stdout, /make task-check\n[\s\S]*task-check passed on [a-f0-9]{40} in 0:0\d; recorded\./);
   // The plan completed after the gate: documentation only.
   f.write('docs/plans/completed/CAP-001-identity.md', plan(tasks[0]) + '\nGate passed.\n');
   const final = f.commit('plan');
@@ -157,7 +157,19 @@ test('the task that completes the queue needs the full gate, also when it change
   f.commit('CAP-002');
   assert.equal(f.cli(['gate']).status, 0);
   assert.match(f.cli(['finish', 'CAP-002']).stderr, /CAP-002 completes the queue: no passed pr-check covers/);
-  assert.match(f.cli(['gate', 'pr-check']).stdout, /make pr-check\n[\s\S]*pr-check passed on/);
+  assert.match(f.cli(['gate', 'pr-check']).stdout, /make pr-check\n[\s\S]*pr-check passed on [a-f0-9]{40} in 0:0\d; recorded\./);
   assert.equal(f.cli(['finish', 'CAP-002']).status, 0);
   assert.equal(f.cli(['next']).stdout, '');
+});
+test('a gate that takes longer than its agreed budget passes and says so', t => {
+  const f = fixture(t);
+  f.write('docs/plans/backlog.json', JSON.stringify({ version: 1, milestone: 1, integration_branch: 'milestone1', budgets: { task_gate_minutes: 0.01 }, tasks }));
+  f.write('bin/make', '#!/bin/sh\nsleep 1\n', 0o755);
+  f.commit('budget');
+  const slow = f.cli(['gate']);
+  assert.equal(slow.status, 0, slow.stderr);
+  assert.match(slow.stdout, /WARN: task-check took 0:0[12], over its budget of 0\.01 minutes/);
+  f.write('docs/plans/backlog.json', JSON.stringify({ version: 1, milestone: 1, integration_branch: 'milestone1', budgets: { task_gate_minutes: 3, gate: 1 }, tasks }));
+  f.commit('unknown budget');
+  assert.match(f.cli(['gate']).stderr, /Invalid budget: gate/);
 });
