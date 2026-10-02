@@ -40,7 +40,7 @@ A skill's pin holds for the turn that invokes it; the session's own model resume
 | `/kordal-build <ID>` | Delivers that task |
 | `/kordal-build-all` | Delivers the whole queue, one agent per task; up to five independent tasks in parallel, each in its own worktree |
 | `/kordal-build-serial` | The same, one task at a time |
-| `/kordal-build-ship` | Opens the pull request of the accepted milestone or feature. The owner merges |
+| `/kordal-build-ship` | Opens the pull request of the accepted milestone or feature, then stops the dev servers, emulators and containers the milestone started. The owner merges |
 
 ## Planning a milestone
 

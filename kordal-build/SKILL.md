@@ -89,7 +89,8 @@ Ship only on `/kordal-build-ship`: the pull request to main is the milestone's r
 
 1. Confirm the gate before the pull request: `next` lists nothing, and the test document on the integration branch records the owner's acceptance: `docs/product/milestone<N>-test.md`, with the milestone review, or `docs/product/feature-<slug>-test.md`.
 2. Follow the workflow's "Open the pull request when the work is done" section.
-3. Report the pull request's URL and the state of its checks, and stop: the owner merges.
+3. Shut down what the milestone started on this machine: the test servers, emulators and simulators, app test builds, containers and background processes of this project's checkouts, and the worktrees under `../<project>.worktrees/`. Stop only what this project's delivery started; the owner's installed apps, other projects' stacks and anything you cannot attribute stay untouched, and are listed instead. Stop containers, do not remove their data.
+4. Report the pull request's URL and the state of its checks, what was shut down and what was left running, and stop: the owner merges.
 
 ## Stop and ask
 
