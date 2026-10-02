@@ -52,7 +52,7 @@ No independent reviewer follows you: the gate and your own check of every accept
    ```
 
    It runs `make pr-check`. A failed gate records nothing.
-2. Record the evidence in the plan and move it to `completed/`. Commits after the gate may change documentation only; a runtime change needs the gate again. [`scripts/agent-scope.mjs`](../../scripts/agent-scope.mjs) holds that rule.
+2. Record the evidence in the plan and move it to `completed/`. For every change a user can see, take a screenshot of the running product on the gated commit, save it as `docs/evidence/<ID>/<what-it-shows>.png` and link it from the plan's Evidence section with a one-line caption. A task with nothing to see records the command or API output instead and says so. Where the session has no way to take a screenshot, the Evidence section says that plainly. Commits after the gate may change documentation only; a runtime change needs the gate again. [`scripts/agent-scope.mjs`](../../scripts/agent-scope.mjs) holds that rule.
 3. Integrate:
 
    ```bash
@@ -61,7 +61,17 @@ No independent reviewer follows you: the gate and your own check of every accept
 
    It refuses a dirty or foreign branch, a missing completed plan, a second task's plan in the same branch, and a runtime change without a covering gate. If the integration branch moved meanwhile, merge it into your branch and gate again. Then it fast-forwards the integration branch to your commit. Nothing is pushed.
 
-A documentation task needs no gate. Report what was integrated, the validation and any follow-up; then select the next task if you were asked to process the queue.
+A documentation task needs no gate.
+
+## Report
+
+After every `finish`, give the owner a status update, then select the next task if you were asked to process the queue:
+
+- **Added:** what a user can now do, in plain words.
+- **Screenshots:** each one shown with its caption, or the output recorded in its place.
+- **Verified:** the acceptance criteria checked against evidence, and the gate result with its commit.
+- **Try it:** the two or three steps by which the owner sees it working.
+- **Next:** the output of `node scripts/agent-local.mjs next`, and any follow-up recorded in Completion Notes.
 
 ## Gates
 
@@ -72,11 +82,24 @@ A documentation task needs no gate. Report what was integrated, the validation a
 
 A gate stage is a make target; a task that adds a kind of check adds its stage. A new repository has no product checks: `make test` fails until the first runtime task puts its tests there, and `make premerge-check` fails until a task gives it stages. Each gate prints the duration of every stage, also after a failure.
 
+## Owner acceptance
+
+When every task of the MVP is on the integration branch, the owner tests the product before anything is pushed.
+
+Write `docs/product/mvp<N>-test.md`:
+
+- how to start the product from the integration branch;
+- a checklist in journey order, built from the acceptance scenarios of the MVP's scope and the "Try it" steps of every task: what to do, and what the owner should see;
+- the failure cases to try;
+- what cannot be tested by hand, and why.
+
+Start the product, hand the owner the list and stop. Each failure the owner reports becomes a task: a plan from the template, registered in the manifest, delivered through this workflow. Update the checklist and hand it back. Done when the owner says the MVP passes and the test document records that with the date and the tested commit.
+
 ## Push when the MVP is done
 
-When every task of the MVP is on the integration branch:
+When the owner has accepted the MVP:
 
-1. Run `make pr-check` and `make premerge-check` on its head.
+1. Run `make pr-check` and `make premerge-check` on the integration branch's head.
 2. Push the integration branch and open one pull request to main with Summary, Evidence and Merge Danger.
 3. The hosted check `Agent structure` runs `make agent-check` on it. A failed, missing, cancelled or skipped check is not a pass.
 4. Merge when the checks are green, then close the task issues, where there are any, with a link to the merge.

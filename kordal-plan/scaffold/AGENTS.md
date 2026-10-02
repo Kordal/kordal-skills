@@ -51,10 +51,11 @@ One task, one branch. `node scripts/agent-local.mjs next` lists the queue; `clai
 
 | Path | Contents |
 | --- | --- |
-| `docs/product/` | Vision, MVP scope and research notes |
+| `docs/product/` | Vision, MVP scope, research notes and the owner's test lists |
 | `docs/adr/` | Architecture Decision Records |
 | `docs/plans/` | Backlog manifest and task plans (`planned/`, `active/`, `completed/`) |
 | `docs/agents/` | Planning workflow, delivery workflow, role instructions |
+| `docs/evidence/` | Screenshots that prove completed tasks, one directory per task |
 | `scripts/` | Agent delivery tooling and the gate runner |
 | `tests/` | Cross-component checks |
 

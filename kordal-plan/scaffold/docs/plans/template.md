@@ -52,7 +52,7 @@ ADRs: none
 
 ## Evidence
 
-<!-- Commands/results, environment, revision and limits. Distinguish local/CI and fake/real-source evidence. -->
+<!-- Commands/results, environment, revision and limits; screenshots from docs/evidence/<ID>/ with captions. Distinguish local/CI and fake/real-source evidence. -->
 
 Pending.
 

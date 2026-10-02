@@ -11,7 +11,7 @@ The project's `docs/agents/planning.md` is the single source of truth for the st
 
 ## Scaffold a new project
 
-The scaffold is the agent structure this workflow runs on: `AGENTS.md`, `CLAUDE.md`, `docs/agents/` (planning, delivery, role instructions), `docs/plans/` (manifest, template, `planned/`, `active/`, `completed/`), `docs/adr/`, `docs/product/vision.md`, the delivery scripts with their tests, the gate runner, the documentation check, the Makefile gates and the hosted structure check.
+The scaffold is the agent structure this workflow runs on: `AGENTS.md`, `CLAUDE.md`, `docs/agents/` (planning, delivery, role instructions), `docs/plans/` (manifest, template, `planned/`, `active/`, `completed/`), `docs/adr/`, `docs/evidence/`, `docs/product/vision.md`, the delivery scripts with their tests, the gate runner, the documentation check, the Makefile gates and the hosted structure check.
 
 1. Run `bash ${CLAUDE_SKILL_DIR}/bootstrap.sh` in the project root (`bootstrap.sh` sits beside this file). It initializes Git when needed, reports every file as `created` or `kept`, and records the scaffold version in `docs/agents/scaffold-version`.
 2. Merge each `kept` file by hand with its counterpart in `${CLAUDE_SKILL_DIR}/scaffold/`: an existing Makefile gains the scaffold's variables and targets, an existing `AGENTS.md` gains its delivery-workflow section and repository map.
@@ -56,4 +56,4 @@ Everything else is yours to resolve: routine engineering choices, task splits, d
 
 Planning writes documents: the research note, the scope draft, Proposed ADRs, plans in `docs/plans/planned/`. The active MVP's queue, claims, branches and manifest change only at stage 6, after that queue is finished or the owner hands it off.
 
-Finish with the stage 6 handoff: the first ready task, the remaining blockers with who resolves each, and the output of the three structure checks and `node scripts/agent-local.mjs next`.
+Finish with the stage 6 handoff: the first ready task, the remaining blockers with who resolves each, and the output of the three structure checks and `node scripts/agent-local.mjs next`. Delivery starts with `/kordal-build`.

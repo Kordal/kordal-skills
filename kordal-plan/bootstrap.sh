@@ -26,7 +26,7 @@ stamp="docs/agents/scaffold-version"
 version() { git -C "$skill" rev-parse HEAD 2>/dev/null || echo unversioned; }
 files() { (cd "$scaffold" && find . -type f ! -name .DS_Store | sed 's|^\./||' | sort); }
 write_stamp() {
-	if [ -n "$(git -C "$skill" status --porcelain -- scaffold 2>/dev/null)" ]; then
+	if [ -n "$(git -C "$scaffold" status --porcelain -- . 2>/dev/null)" ]; then
 		echo "WARN     the scaffold has uncommitted changes: the recorded version does not include them"
 	fi
 	mkdir -p "$dest/$(dirname "$stamp")"
@@ -42,11 +42,11 @@ fi
 if [ "$mode" = diff ]; then
 	from=$(cat "$dest/$stamp" 2>/dev/null || true)
 	if [ -n "$from" ] && git -C "$skill" cat-file -e "$from^{commit}" 2>/dev/null; then
-		if git -C "$skill" diff --quiet "$from" HEAD -- scaffold; then
+		if git -C "$scaffold" diff --quiet "$from" HEAD -- .; then
 			echo "The scaffold has not changed since $from"
 		else
 			echo "Scaffold changes from $from to $(version):"
-			git -C "$skill" --no-pager diff --relative=scaffold/ "$from" HEAD -- scaffold
+			git -C "$scaffold" --no-pager diff --relative "$from" HEAD -- .
 		fi
 		files | while IFS= read -r file; do
 			[ -e "$dest/$file" ] || echo "missing  $file"
