@@ -51,7 +51,7 @@ One task, one branch. `node scripts/agent-local.mjs next` lists the queue; `clai
 
 | Path | Contents |
 | --- | --- |
-| `docs/product/` | Vision, milestone scope, research notes and the owner's test lists |
+| `docs/product/` | Vision, milestone scope, research notes, the owner's test lists and, under `improvements/`, improvement reports |
 | `docs/adr/` | Architecture Decision Records |
 | `docs/plans/` | Backlog manifest and task plans (`planned/`, `active/`, `completed/`) |
 | `docs/agents/` | Planning workflow, delivery workflow, role instructions |

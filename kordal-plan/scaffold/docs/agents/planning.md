@@ -20,7 +20,7 @@ The research note carries the planning status as the line under its title: `Plan
 
 ## 1. Establish the baseline
 
-Inspect the current delivery state using the [agent workflow's sources of truth](workflow.md#sources-of-truth). Identify the branch and commit being assessed, including changes integrated locally but absent from main. Read the previous milestone's scope, acceptance evidence, limitations and task Completion Notes. Include available user feedback and pilot findings.
+Inspect the current delivery state using the [agent workflow's sources of truth](workflow.md#sources-of-truth). Identify the branch and commit being assessed, including changes integrated locally but absent from main. Read the previous milestone's scope, acceptance evidence, limitations and task Completion Notes. Include available user feedback and pilot findings, and the improvement reports under `docs/product/improvements/`: a proposal the owner marked "later" is a candidate, and one marked "no" stays rejected for the reason recorded.
 
 For the first milestone there is no previous one: the baseline is the owner's account of the users and their problem, any existing code, and the [product vision](../product/vision.md), which you write from that account and the owner confirms. Write its core idea as the Purpose of [AGENTS.md](../../AGENTS.md).
 
@@ -104,7 +104,7 @@ Planning is ready for implementation when these checks pass and the handoff iden
 The short path for a small addition: at most three tasks and no new architecture decision. A request that is larger, needs an ADR, or falls under an agreed exclusion is a milestone's work: say which of the three applies, stop, and plan it through the six stages.
 
 1. **Clarify.** State the feature as "A [user] can [do something], demonstrated by [observable result]" and have the owner confirm the sentence.
-2. **Check the fit.** Read the current scope with its exclusions, the ADRs and the code the feature touches. Continue only when it passes the three limits above.
+2. **Check the fit.** Read the current scope with its exclusions, the ADRs, the code the feature touches, and the improvement report the feature comes from, where `docs/product/improvements/` has one. Continue only when it passes the three limits above.
 3. **Plan.** Write one to three plans from the [task template](../plans/template.md), numbered after the highest task ID, each with observable acceptance criteria, failure behaviour and a Flow. Present them for the owner's approval.
 4. **Register** the approved tasks in [backlog.json](../plans/backlog.json) with `"issue": null`, and record the feature under "Added features" in `docs/product/milestone<N>.md`: the date, the sentence and the task IDs. Where the tasks go depends on the integration branch:
    - **Not yet merged into main** (a milestone or a feature is in progress, or awaits its pull request): the feature joins it. Add the tasks to the acceptance task's `depends_on` and to its plan's Dependencies line, unless that task is already claimed. `claim` the first feature task, switch to its branch and commit the plans, the manifest and the scope there; the task stays claimed for delivery. A feature that joins a milestone the owner has already accepted repeats the owner's test: say so before step 3.
