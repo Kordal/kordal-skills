@@ -52,7 +52,7 @@ Six stages; a stage closes only with evidence. The owner decides at the stages i
 | 2 | **One user outcome**: "A [user] can [job], demonstrated by [result]" | `docs/product/milestone<N>.md` |
 | 3 | **Journey and scope**: capabilities, exclusions, acceptance scenarios, test budget; a prototype at real size for anything the user sees | `milestone<N>.md` completed |
 | 4 | Uncertainties: research, prototypes, architecture decisions (**only if a finding changes the scope**) | Proposed ADRs in `docs/adr/` |
-| 5 | Backlog: one plan per task with acceptance criteria and a flow diagram | `docs/plans/planned/`, `backlog.json`, `milestone<N>-summary.html` |
+| 5 | Backlog: few, large tasks (about an hour of work at least), cut along components; one plan per task with acceptance criteria and a flow diagram | `docs/plans/planned/`, `backlog.json`, `milestone<N>-summary.html` |
 | 6 | Handoff: issues created, integration branch `milestone<N>`, structure checks | First ready task |
 
 `milestone<N>-summary.html` is a generated page for the owner: scope, task dependency graph, every task with its criteria and flow, and the decisions.
