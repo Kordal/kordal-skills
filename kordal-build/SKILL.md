@@ -46,7 +46,13 @@ Where the `kordal-reviewer` agent is missing or its dispatch fails, run the `cod
 
 ## Work the queue
 
-Repeat until `next` lists no `READY` task and none this checkout left `CLAIMED`:
+Open with the plan of the run, before the first task, in one short message:
+
+- **Tasks**, in the order they will be delivered: ID and title of every unfinished task from `next`, the acceptance task last. Mark a `BLOCKED` task with its blocker: the run stops before it.
+- **Models**: delivery, `kordal-builder`; review, `kordal-reviewer`; the acceptance task and this session. Read each agent's model and effort from its definition in `~/.claude/agents/` and name this session's own model; where an agent is missing, say that a generic subagent on the session's model takes its place.
+- **Where it stops**: at the owner's test in the acceptance task, and at the conditions under "Stop and ask".
+
+Then repeat until `next` lists no `READY` task and none this checkout left `CLAIMED`:
 
 1. Take the first task in manifest order.
 2. Announce the task to the owner: `CAP-003 · started · 3 of 6 tasks`. The subagent's steps stay inside its own context, so this line and the status update at the end are what the owner sees of a task in this mode.
