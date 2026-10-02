@@ -82,6 +82,8 @@ Add a "Task dependencies" section to `docs/product/milestone<N>.md` with a Merma
 
 Then run `node scripts/agent-summary.mjs`. It writes `docs/product/milestone<N>-summary.html`, the implementation summary for the owner: the scope, the dependency graph drawn from the manifest, and every unfinished task with its goal, acceptance criteria and flow, followed by their ADRs. Open it for the owner. The page is a view of the plans: change a plan and regenerate, never edit the page.
 
+Give a task only the dependencies it cannot start without: tasks that do not depend on each other are delivered in parallel, and a chain of convenience makes the whole milestone wait in line.
+
 Done when every included capability has an owner task and a proof of completion, every plan has its Flow, the owner has the implementation summary, and the dependency graph in `milestone<N>.md` matches `depends_on` in the manifest, with no cycles or hidden prerequisites.
 
 ## 6. Check readiness and hand off
