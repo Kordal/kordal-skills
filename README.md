@@ -10,9 +10,20 @@ ln -s ~/Development/kordal-skills/kordal-plan ~/.claude/skills/kordal-plan
 ln -s ~/Development/kordal-skills/kordal-build ~/.claude/skills/kordal-build
 mkdir -p ~/.claude/agents
 ln -s ~/Development/kordal-skills/agents/kordal-reviewer.md ~/.claude/agents/kordal-reviewer.md
+ln -s ~/Development/kordal-skills/agents/kordal-builder.md ~/.claude/agents/kordal-builder.md
 ```
 
 Needs `git`, `node`, `make` and, for the GitHub mirror, `gh` logged in. The skills load in Claude Code sessions started after the install.
+
+## Models
+
+| Work | Model | Effort | Set by |
+| --- | --- | --- | --- |
+| Planning | Opus 5.5 | high | `kordal-plan` frontmatter |
+| Delivery | Opus 5.5 | medium | `kordal-build` frontmatter; the `kordal-builder` agent in `all` mode |
+| Review | Fable | high | the `kordal-reviewer` agent |
+
+A skill's pin holds for the turn that invokes it; the session's own model resumes on the next prompt. The agents' pins always hold.
 
 ## Commands
 

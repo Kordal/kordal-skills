@@ -2,6 +2,8 @@
 name: kordal-build
 description: Deliver the planned milestone through the project's delivery workflow - the next ready task, a named task, the whole queue, or the final push.
 disable-model-invocation: true
+model: claude-opus-5-5
+effort: medium
 argument-hint: "[task ID | all | ship]"
 ---
 
@@ -15,6 +17,8 @@ Deliver the tasks `/kordal-plan` prepared. `$ARGUMENTS` picks the mode:
 | `ship` | [Ship](#ship): open the pull request of the milestone or the feature |
 
 The project's `docs/agents/workflow.md` is the single source of truth for claiming, gates, the review, evidence, the status update, the acceptance task and the pull request. Read it in full now, with `AGENTS.md` and `docs/agents/claude.md`. This skill adds only how to run it in a Claude session. A project without that file is planned first: tell the owner to run `/kordal-plan`.
+
+Delivery runs on Opus 5.5 at medium effort: the frontmatter pins it for the turn that invokes the skill, the `kordal-builder` agent for every task of the queue. The review runs on another model.
 
 ## Announce every step
 
@@ -46,7 +50,7 @@ Repeat until `next` lists no `READY` task and none this checkout left `CLAIMED`:
 
 1. Take the first task in manifest order.
 2. Announce the task to the owner: `CAP-003 · started · 3 of 6 tasks`. The subagent's steps stay inside its own context, so this line and the status update at the end are what the owner sees of a task in this mode.
-3. Dispatch one foreground subagent for it, so every task starts from its plan with a clean context: "Read `${CLAUDE_SKILL_DIR}/SKILL.md` and deliver task `<ID>` by its section 'Deliver one task', in `<project root>`. End with the verbatim output of `finish`, the status update and the screenshot paths."
+3. Dispatch one foreground `kordal-builder` agent for it (Opus 5.5 at medium effort; a generic subagent where that agent is missing), so every task starts from its plan with a clean context: "Read `${CLAUDE_SKILL_DIR}/SKILL.md` and deliver task `<ID>` by its section 'Deliver one task', in `<project root>`. End with the verbatim output of `finish`, the status update and the screenshot paths."
 4. Verify the result yourself: `next` no longer lists the task, and the screenshot files exist. A task the subagent left unfinished is yours to resume by "Deliver one task".
 5. Relay the status update and the screenshots to the owner, and continue with the next task without waiting for an answer.
 

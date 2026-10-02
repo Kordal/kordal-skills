@@ -2,12 +2,16 @@
 name: kordal-plan
 description: Plan the next milestone through the six-stage planning workflow, or a small feature through its short path; in a new project, scaffold the agent structure first.
 disable-model-invocation: true
+model: claude-opus-5-5
+effort: high
 argument-hint: "[milestone number or outcome idea | feature <idea> | update]"
 ---
 
 Plan the milestone named in `$ARGUMENTS`; with no argument, plan the one after the latest `docs/product/milestone<N>.md`, or Milestone 1 when none exists.
 
 The project's `docs/agents/planning.md` is the single source of truth for the stages, their artifacts and their "Done when" criteria. This skill adds only how to run it in a Claude session. Where the file is missing, [scaffold the project](#scaffold-a-new-project) first. Then read it in full.
+
+Planning runs on Opus 5.5 at high effort. The frontmatter pins that for the turn that invokes the skill only; planning continues over several turns. At the start of a later turn in which you are another model, tell the owner in one line to switch the session to Opus 5.5 at high effort, and continue.
 
 ## Scaffold a new project
 
