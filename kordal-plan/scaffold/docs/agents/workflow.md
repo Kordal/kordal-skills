@@ -16,7 +16,7 @@ Delivery is **local**: develop, verify and integrate on the local machine. A tas
 
 The local repository holds the state, and every worktree of it sees the same:
 
-- **Integration branch**, named by `integration_branch` in the manifest (`mvp<N>`). Finished tasks accumulate here. It starts from main and becomes the MVP's pull request. Nobody commits to it directly and no worktree checks it out.
+- **Integration branch**, named by `integration_branch` in the manifest: `mvp<N>`, or `feature/<slug>` for a standalone feature. Finished tasks accumulate here. It starts from main and becomes the MVP's pull request. Nobody commits to it directly and no worktree checks it out.
 - **Done:** the task's completed plan is on the integration branch.
 - **Claimed:** the branch `task/<id>` exists (`task/cap-001`).
 
@@ -121,9 +121,17 @@ Start the product, hand the owner the list and stop. Each failure the owner repo
 
 Run both gates on the branch, which is what the owner tested: `node scripts/agent-local.mjs gate` and `node scripts/agent-local.mjs gate premerge-check`. Record them as the task's evidence and `finish`.
 
-## Open the pull request when the MVP is done
+## A standalone feature
 
-When `next` lists nothing and the test document records the MVP review and the owner's acceptance:
+A feature planned while nothing else is in progress has its own integration branch, `feature/<slug>`, and no separate acceptance task: its last task carries the acceptance. On that task's branch, after its evidence is recorded:
+
+1. Review the whole feature, the diff from main, where the feature has more than one task; record it in the task's Review.
+2. Write `docs/product/feature-<slug>-test.md`: how to start the product from this branch, a checklist of what to do and what the owner should see, and the failure cases to try. Start the product, hand the owner the list and stop.
+3. Fix what the owner reports on this branch and gate again. When the owner says the feature passes, record that in the test document with the date and the tested commit, run `node scripts/agent-local.mjs gate premerge-check` where the gate has stages, and `finish`.
+
+## Open the pull request when the work is done
+
+When `next` lists nothing and the test document, `docs/product/mvp<N>-test.md` or `docs/product/feature-<slug>-test.md`, records the owner's acceptance, and for an MVP its review:
 
 1. With a GitHub mirror, run `node scripts/agent-issues.mjs sync --check`: the mirror matches before the pull request names its issues.
 2. Open one pull request from the integration branch, which `finish` has pushed, to main, with Summary, Evidence and Merge Danger; the Summary lists every task with its issue.

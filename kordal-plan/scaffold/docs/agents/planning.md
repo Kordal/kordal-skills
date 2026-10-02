@@ -1,6 +1,6 @@
 # MVP planning workflow
 
-Use this process when planning a new MVP or materially changing an agreed MVP's outcome or scope. Planning produces an agreed product scope and an executable backlog; task delivery follows [workflow.md](workflow.md).
+Use this process when planning a new MVP or materially changing an agreed MVP's outcome or scope. A small addition takes the short path: [Plan a feature](#plan-a-feature). Planning produces an agreed product scope and an executable backlog; task delivery follows [workflow.md](workflow.md).
 
 The owner decides the user outcome and accepts the scope and tradeoffs. Agents investigate, recommend a scope, prepare task plans and resolve routine engineering choices. Reuse decisions already made in the conversation; ask only for missing owner decisions and continue independent research meanwhile.
 
@@ -98,3 +98,17 @@ Before switching delivery to the next MVP:
 - Run `node scripts/agent-local.mjs next` in the delivery checkout and confirm that readiness matches the intended dependencies. With a `repository`, `node scripts/agent-issues.mjs sync --check` passes.
 
 Planning is ready for implementation when these checks pass and the handoff identifies the first ready task, remaining blockers and required evidence. Continue through [the delivery workflow](workflow.md); keep gate and integration rules there as the single source of truth.
+
+## Plan a feature
+
+The short path for a small addition: at most three tasks and no new architecture decision. A request that is larger, needs an ADR, or falls under an agreed exclusion is an MVP's work: say which of the three applies, stop, and plan it through the six stages.
+
+1. **Clarify.** State the feature as "A [user] can [do something], demonstrated by [observable result]" and have the owner confirm the sentence.
+2. **Check the fit.** Read the current scope with its exclusions, the ADRs and the code the feature touches. Continue only when it passes the three limits above.
+3. **Plan.** Write one to three plans from the [task template](../plans/template.md), numbered after the highest task ID, each with observable acceptance criteria, failure behaviour and a Flow. Present them for the owner's approval.
+4. **Register** the approved tasks in [backlog.json](../plans/backlog.json) with `"issue": null`, and record the feature under "Added features" in `docs/product/mvp<N>.md`: the date, the sentence and the task IDs. Where the tasks go depends on the integration branch:
+   - **Not yet merged into main** (an MVP or a feature is in progress, or awaits its pull request): the feature joins it. Add the tasks to the acceptance task's `depends_on` and to its plan's Dependencies line, unless that task is already claimed. `claim` the first feature task, switch to its branch and commit the plans, the manifest and the scope there; the task stays claimed for delivery. A feature that joins an MVP the owner has already accepted repeats the owner's test: say so before step 3.
+   - **Merged into main** (nothing is in progress): the feature stands alone. Set `integration_branch` to `feature/<slug>`, commit the plans, the manifest and the scope on main, and create that branch from main. With a `repository`: run `node scripts/agent-issues.mjs sync`, commit the issue numbers on main, move the still unclaimed branch with `git branch -f feature/<slug> main`, push main and run `node scripts/agent-local.mjs publish`. Delivery follows [A standalone feature](workflow.md#a-standalone-feature).
+5. **Hand off.** Run `node scripts/agent-summary.mjs`, `make agent-check` and `bash tests/integration/check-docs.sh`, and name the first task with the output of `node scripts/agent-local.mjs next`.
+
+Done when the owner has approved the plans, the checks pass and `next` shows the feature's first task as claimed or ready.

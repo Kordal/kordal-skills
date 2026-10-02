@@ -1,8 +1,8 @@
 ---
 name: kordal-plan
-description: Plan the next MVP, or re-plan an agreed MVP's outcome or scope, through the six-stage planning workflow; in a new project, scaffold the agent structure first.
+description: Plan the next MVP through the six-stage planning workflow, or a small feature through its short path; in a new project, scaffold the agent structure first.
 disable-model-invocation: true
-argument-hint: "[MVP number or outcome idea | update]"
+argument-hint: "[MVP number or outcome idea | feature <idea> | update]"
 ---
 
 Plan the MVP named in `$ARGUMENTS`; with no argument, plan the one after the latest `docs/product/mvp<N>.md`, or MVP 1 when none exists.
@@ -19,6 +19,15 @@ The scaffold is the agent structure this workflow runs on: `AGENTS.md`, `CLAUDE.
 4. A project without an `origin` remote: ask the owner once, with `AskUserQuestion`, whether to create a private GitHub repository for it, recommending yes. On yes, run `gh repo create <folder name> --private --source . --remote origin --push`, set `"repository": "<owner>/<name>"` in `docs/plans/backlog.json` and commit. A project that already has a GitHub `origin` gets that `repository` without the question. On no, the manifest stays without `repository` and the project is delivered without GitHub.
 
 The scaffold's placeholders are HTML comments naming the planning stage that fills them. Replace each comment at that stage, so `AGENTS.md` and `vision.md` carry no placeholder at the stage 6 handoff.
+
+## Plan a feature
+
+When `$ARGUMENTS` starts with `feature`, plan the rest of it by the "Plan a feature" section of `docs/agents/planning.md` instead of the six stages. A project that has no agreed MVP yet plans its first MVP instead: say so.
+
+- The fit check is a real gate. A feature over its limits ends the run with the limit it broke and the advice to run `/kordal-plan`; the owner alone may overrule that.
+- Two owner decisions, both with `AskUserQuestion`: the feature sentence at step 1, the plans at step 3. Everything else is yours.
+- Write the plans with `writing-for-agents`.
+- Finish with the first task and the output of `next`, and say `/kordal-build` delivers it.
 
 ## Update a scaffolded project
 

@@ -4,7 +4,7 @@ Claude Code skills for planning and delivering an MVP with agents.
 
 | Skill | Does |
 | --- | --- |
-| `/kordal-plan` | Scaffolds a new project and plans an MVP through six stages |
+| `/kordal-plan` | Scaffolds a new project and plans an MVP through six stages; `feature <idea>` plans a small addition |
 | `/kordal-build` | Delivers the planned tasks, hands the owner a test list, ships |
 
 ## Install

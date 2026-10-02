@@ -12,7 +12,7 @@ Deliver the tasks `/kordal-plan` prepared. `$ARGUMENTS` picks the mode:
 | empty | [Deliver one task](#deliver-one-task): the claimed task this checkout left unfinished, else the first `READY` one |
 | a task ID | [Deliver one task](#deliver-one-task): that one |
 | `all` | [Work the queue](#work-the-queue) |
-| `ship` | [Ship](#ship): open the MVP's pull request |
+| `ship` | [Ship](#ship): open the pull request of the MVP or the feature |
 
 The project's `docs/agents/workflow.md` is the single source of truth for claiming, gates, the review, evidence, the status update, the acceptance task and the pull request. Read it in full now, with `AGENTS.md` and `docs/agents/claude.md`. This skill adds only how to run it in a Claude session. A project without that file is planned first: tell the owner to run `/kordal-plan`.
 
@@ -35,7 +35,7 @@ Repeat until `next` lists no `READY` task and none this checkout left `CLAIMED`:
 3. Verify the result yourself: `next` no longer lists the task, and the screenshot files exist. A task the subagent left unfinished is yours to resume by "Deliver one task".
 4. Relay the status update and the screenshots to the owner, and continue with the next task without waiting for an answer.
 
-The MVP's acceptance task is yours, not a subagent's: when it is the task to take, deliver it by [The acceptance task](#the-acceptance-task). When only `WAIT` and `BLOCKED` tasks remain, report each blocker with who resolves it and stop.
+The MVP's acceptance task is yours, not a subagent's: when it is the task to take, deliver it by [The acceptance task](#the-acceptance-task). So is the last task of [a standalone feature](#a-standalone-feature). When only `WAIT` and `BLOCKED` tasks remain, report each blocker with who resolves it and stop.
 
 ## The acceptance task
 
@@ -45,12 +45,16 @@ Follow the workflow's "The acceptance task" section on the task's own branch:
 2. **Owner acceptance.** Complete the test document, start the product, give the owner the checklist and how to reach the running product, and stop. The owner's test is a gate; the MVP waits there until the owner answers. Deliver every failure the owner reports as a task, then hand the updated checklist back.
 3. **Finish.** When the owner says the MVP passes, record it in the test document, run both gates, finish the task and tell the owner `/kordal-build ship` is next.
 
+## A standalone feature
+
+A feature on its own `feature/<slug>` branch has no acceptance task. Its last task carries the acceptance: deliver it by "Deliver one task" up to the evidence, then follow the workflow's "A standalone feature" section before `finish`. Take that task yourself, as you take an acceptance task, because it stops for the owner.
+
 ## Ship
 
 Ship only on `/kordal-build ship`: the pull request to main is the MVP's release, so it is opened on the owner's explicit command and in no other mode.
 
-1. Confirm the gate before the pull request: `next` lists nothing, and `docs/product/mvp<N>-test.md` on the integration branch records the MVP review and the owner's acceptance.
-2. Follow the workflow's "Open the pull request when the MVP is done" section.
+1. Confirm the gate before the pull request: `next` lists nothing, and the test document on the integration branch records the owner's acceptance: `docs/product/mvp<N>-test.md`, with the MVP review, or `docs/product/feature-<slug>-test.md`.
+2. Follow the workflow's "Open the pull request when the work is done" section.
 3. Report the pull request's URL and the state of its checks, and stop: the owner merges.
 
 ## Stop and ask
