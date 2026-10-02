@@ -1,0 +1,25 @@
+# Local environment files (never commit secrets)
+.env
+.env.*
+!.env.example
+
+# Dependencies and build output
+node_modules/
+dist/
+/bin/
+coverage/
+
+# IDE / editor
+.idea/
+.vscode/
+*.swp
+*~
+
+# Temporary files
+tmp/
+*.tmp
+*.log
+
+# OS metadata
+.DS_Store
+Thumbs.db

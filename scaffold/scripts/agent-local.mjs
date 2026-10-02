@@ -1,0 +1,99 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import { validateManifest } from './agent-workflow.mjs';
+import { needsGate } from './agent-scope.mjs';
+
+// Local delivery (docs/agents/workflow.md): tasks are claimed, gated and
+// integrated in the local repository; nothing here talks to GitHub. State
+// lives in Git, which every worktree of the repository shares:
+//   - done:    the task's completed plan is on the integration branch;
+//   - claimed: the branch task/<id> exists;
+//   - gated:   <git dir>/agent-gates/<commit>.<gate> records a passed gate.
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const gateNames = ['pr-check', 'premerge-check'];
+const git = (...args) => execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+const tryGit = (...args) => { try { return git(...args); } catch { return null; } };
+const assert = (condition, message) => { if (!condition) throw new Error(message); };
+const planPath = (task, phase) => `docs/plans/${phase}/${task.id}-${task.slug}.md`;
+const taskBranch = task => `task/${task.id.toLowerCase()}`;
+const gateRecord = (sha, gate) => path.join(path.resolve(root, git('rev-parse', '--git-common-dir')), 'agent-gates', `${sha}.${gate}`);
+
+function load() {
+  const manifest = JSON.parse(fs.readFileSync(path.join(root, 'docs/plans/backlog.json'), 'utf8'));
+  validateManifest(manifest);
+  assert(tryGit('rev-parse', '--verify', '--quiet', `refs/heads/${manifest.integration_branch}`), `The integration branch ${manifest.integration_branch} does not exist; create it from main`);
+  return manifest;
+}
+function stateOf(manifest, task) {
+  const done = t => tryGit('cat-file', '-e', `${manifest.integration_branch}:${planPath(t, 'completed')}`) !== null;
+  if (done(task)) return { state: 'DONE' };
+  if (tryGit('rev-parse', '--verify', '--quiet', `refs/heads/${taskBranch(task)}`)) return { state: 'CLAIMED', detail: taskBranch(task) };
+  if (task.external_blocker) return { state: 'BLOCKED', detail: task.external_blocker };
+  const waiting = task.depends_on.filter(id => !done(manifest.tasks.find(t => t.id === id)));
+  return waiting.length ? { state: 'WAIT', detail: `needs ${waiting.join(', ')}` } : { state: 'READY', detail: task.title };
+}
+function taskById(manifest, id) {
+  const task = manifest.tasks.find(t => t.id === id);
+  assert(task, `Unknown task ${id ?? ''}; use an ID of backlog.json`);
+  return task;
+}
+const runtimeChange = (from, to) => needsGate(git('diff', '--name-only', from, to).split('\n').filter(Boolean));
+
+function main() {
+  const [command = 'next', argument] = process.argv.slice(2);
+  assert(['next', 'claim', 'gate', 'finish'].includes(command), 'Usage: agent-local.mjs next|claim <ID>|gate [pr-check|premerge-check]|finish <ID>');
+  const manifest = load(), integration = manifest.integration_branch;
+  if (command === 'next') {
+    for (const task of manifest.tasks) {
+      const { state, detail } = stateOf(manifest, task);
+      if (state !== 'DONE') console.log(`${state} ${task.id}: ${detail}`);
+    }
+    return;
+  }
+  if (command === 'claim') {
+    const task = taskById(manifest, argument), { state, detail } = stateOf(manifest, task);
+    assert(state === 'READY', `${task.id} is not ready: ${state}${detail ? ` (${detail})` : ''}`);
+    // Creating the branch is the claim: Git refuses a second one.
+    assert(tryGit('branch', taskBranch(task), integration) !== null, `${task.id} was claimed a moment ago: ${taskBranch(task)} exists`);
+    console.log(`Claimed ${task.id} on ${taskBranch(task)} (from ${integration}). Work there: git switch ${taskBranch(task)}`);
+    return;
+  }
+  if (command === 'gate') {
+    const gate = argument ?? 'pr-check';
+    assert(gateNames.includes(gate), `Unknown gate ${gate}; use ${gateNames.join(' or ')}`);
+    assert(!git('status', '--porcelain'), 'Commit your work first: a gate is recorded for a commit');
+    const sha = git('rev-parse', 'HEAD');
+    const result = spawnSync(process.env.AGENT_MAKE ?? 'make', [gate], { cwd: root, stdio: 'inherit' });
+    assert(result.status === 0, `${gate} failed on ${sha}; nothing recorded`);
+    assert(git('rev-parse', 'HEAD') === sha && !git('status', '--porcelain'), `The checkout changed while ${gate} ran; nothing recorded`);
+    fs.mkdirSync(path.dirname(gateRecord(sha, gate)), { recursive: true });
+    fs.writeFileSync(gateRecord(sha, gate), `${new Date().toISOString()}\n`);
+    console.log(`${gate} passed on ${sha}; recorded.`);
+    return;
+  }
+  const task = taskById(manifest, argument);
+  assert(git('rev-parse', '--abbrev-ref', 'HEAD') === taskBranch(task), `Finish ${task.id} from its branch ${taskBranch(task)}`);
+  assert(!git('status', '--porcelain'), 'Commit your work first');
+  assert(fs.existsSync(path.join(root, planPath(task, 'completed'))), `Move the plan to ${planPath(task, 'completed')} with its evidence first`);
+  const base = git('rev-parse', integration), head = git('rev-parse', 'HEAD');
+  assert(tryGit('merge-base', '--is-ancestor', base, head) !== null, `${integration} moved: merge it into ${taskBranch(task)}, then gate again`);
+  const files = git('diff', '--name-only', base, head).split('\n').filter(Boolean);
+  for (const other of manifest.tasks.filter(t => t.id !== task.id)) {
+    for (const phase of ['active', 'completed']) assert(!files.includes(planPath(other, phase)), `This branch also changes ${other.id}; one task per branch`);
+  }
+  // A runtime change needs the fast gate on a commit of this branch that no
+  // runtime change follows: later commits may only record evidence.
+  if (runtimeChange(base, head)) {
+    const gated = git('rev-list', `${base}..${head}`).split('\n').find(sha => fs.existsSync(gateRecord(sha, 'pr-check')) && !runtimeChange(sha, head));
+    assert(gated, `No passed pr-check covers ${head}. Run: node scripts/agent-local.mjs gate`);
+  }
+  assert(!git('worktree', 'list', '--porcelain').split('\n').includes(`branch refs/heads/${integration}`), `${integration} is checked out in a worktree; switch that worktree to another branch`);
+  // Fast-forward, and only from the revision that was verified above.
+  assert(tryGit('update-ref', `refs/heads/${integration}`, head, base) !== null, `${integration} moved during verification; rerun`);
+  console.log(`${task.id} is on ${integration} at ${head}. Nothing was pushed.`);
+}
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  try { main(); } catch (error) { console.error(`FAIL: ${error.message}`); process.exitCode = 1; }
+}
