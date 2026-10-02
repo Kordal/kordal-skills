@@ -16,6 +16,10 @@ Deliver the tasks `/kordal-plan` prepared. `$ARGUMENTS` picks the mode:
 
 The project's `docs/agents/workflow.md` is the single source of truth for claiming, gates, the review, evidence, the status update, the acceptance task and the pull request. Read it in full now, with `AGENTS.md` and `docs/agents/claude.md`. This skill adds only how to run it in a Claude session. A project without that file is planned first: tell the owner to run `/kordal-plan`.
 
+## Announce every step
+
+Before starting a step of "Deliver one task", tell the owner in one line which task and which step begins: `CAP-003 · step 3 of 7 · Gate`. Add what the step just before it produced when that is one fact: the commit, the gate's duration, the number of review findings. The acceptance task and the pull request announce their parts the same way.
+
 ## Deliver one task
 
 1. **Place.** Run `node scripts/agent-local.mjs next`. A `CLAIMED` task whose branch no other worktree has checked out (`git worktree list`) is resumed on its branch; otherwise claim the task and switch to `task/<id>`. Move the plan to `active/`.
@@ -31,9 +35,10 @@ The project's `docs/agents/workflow.md` is the single source of truth for claimi
 Repeat until `next` lists no `READY` task and none this checkout left `CLAIMED`:
 
 1. Take the first task in manifest order.
-2. Dispatch one foreground subagent for it, so every task starts from its plan with a clean context: "Read `${CLAUDE_SKILL_DIR}/SKILL.md` and deliver task `<ID>` by its section 'Deliver one task', in `<project root>`. End with the verbatim output of `finish`, the status update and the screenshot paths."
-3. Verify the result yourself: `next` no longer lists the task, and the screenshot files exist. A task the subagent left unfinished is yours to resume by "Deliver one task".
-4. Relay the status update and the screenshots to the owner, and continue with the next task without waiting for an answer.
+2. Announce the task to the owner: `CAP-003 · started · 3 of 6 tasks`. The subagent's steps stay inside its own context, so this line and the status update at the end are what the owner sees of a task in this mode.
+3. Dispatch one foreground subagent for it, so every task starts from its plan with a clean context: "Read `${CLAUDE_SKILL_DIR}/SKILL.md` and deliver task `<ID>` by its section 'Deliver one task', in `<project root>`. End with the verbatim output of `finish`, the status update and the screenshot paths."
+4. Verify the result yourself: `next` no longer lists the task, and the screenshot files exist. A task the subagent left unfinished is yours to resume by "Deliver one task".
+5. Relay the status update and the screenshots to the owner, and continue with the next task without waiting for an answer.
 
 The milestone's acceptance task is yours, not a subagent's: when it is the task to take, deliver it by [The acceptance task](#the-acceptance-task). So is the last task of [a standalone feature](#a-standalone-feature). When only `WAIT` and `BLOCKED` tasks remain, report each blocker with who resolves it and stop.
 
