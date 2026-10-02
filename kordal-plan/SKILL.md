@@ -22,6 +22,8 @@ The scaffold is the agent structure this workflow runs on: `AGENTS.md`, `CLAUDE.
 3. Run `make agent-check` and `bash tests/integration/check-docs.sh`. Done when both pass; then commit the scaffold on main as its own commit and show the owner the bootstrap report.
 4. A project without an `origin` remote: ask the owner once, with `AskUserQuestion`, whether to create a private GitHub repository for it, recommending yes. On yes, run `gh repo create <folder name> --private --source . --remote origin --push`, set `"repository": "<owner>/<name>"` in `docs/plans/backlog.json` and commit. A project that already has a GitHub `origin` gets that `repository` without the question. On no, the manifest stays without `repository` and the project is delivered without GitHub.
 
+5. A project with hosted workflows that run on a push to main (`.github/workflows/*.yml` with `on: push`): planning pushes main with documents only, and a path filter that ignores `**.md` alone still fires on `docs/plans/backlog.json` and the summary page. Show the owner each such workflow and add `docs/**` and `scripts/agent-*` to its `paths-ignore` on their yes, so that main builds and publishes only when product code reaches it: at the milestone's merge.
+
 The scaffold's placeholders are HTML comments naming the planning stage that fills them. Replace each comment at that stage, so `AGENTS.md` and `vision.md` carry no placeholder at the stage 6 handoff.
 
 ## Plan a feature
@@ -41,9 +43,10 @@ When `$ARGUMENTS` is `update` or `upgrade`, bring the project's scaffold up to d
 2. **Migrate the names.** Where `docs/plans/backlog.json` still has `"mvp"`, run `node ${CLAUDE_SKILL_DIR}/migrate.mjs` in the project root. It renames the manifest key, the integration branch, the `docs/product/mvp<N>*` documents with their links, and on GitHub the branch and the milestone; it commits nothing. Commit its changes as their own commit.
 3. **Diff.** Run `bash ${CLAUDE_SKILL_DIR}/bootstrap.sh --diff`. It prints what changed in the scaffold since the version the project records, and every scaffold file the project lacks. A project with no recorded version gets a file-by-file comparison instead. Show the owner the list.
 4. **Apply** each scaffold change to the project's file, keeping the project's own content; copy the missing files.
-5. **Bring the open plans up to the template.** Every plan in `planned/` and `active/` gets each section the template now has and the plan lacks, written from the plan's own content: a Flow drawn from its acceptance criteria, not a placeholder. Completed plans stay as they are. Where the scope document lacks a section the planning workflow now asks for, add it with the owner.
-6. **Check.** Run `node scripts/agent-summary.mjs`, `make agent-check` and `bash tests/integration/check-docs.sh`. Done when the last two pass. Open the summary page in the owner's browser and say that every diagram renders there; in the Markdown files they are Mermaid source.
-7. **Record.** Run `bash ${CLAUDE_SKILL_DIR}/bootstrap.sh --stamp`, commit the update as its own commit and move the integration branch to it with `git branch -f <integration branch> main`. With a `repository`, push main and run `node scripts/agent-local.mjs publish`; done when `node scripts/agent-issues.mjs sync --check` passes.
+5. **Check the hosted workflows** as step 5 of "Scaffold a new project" says, where that has not been done.
+6. **Bring the open plans up to the template.** Every plan in `planned/` and `active/` gets each section the template now has and the plan lacks, written from the plan's own content: a Flow drawn from its acceptance criteria, not a placeholder. Completed plans stay as they are. Where the scope document lacks a section the planning workflow now asks for, add it with the owner.
+7. **Check.** Run `node scripts/agent-summary.mjs`, `make agent-check` and `bash tests/integration/check-docs.sh`. Done when the last two pass. Open the summary page in the owner's browser and say that every diagram renders there; in the Markdown files they are Mermaid source.
+8. **Record.** Run `bash ${CLAUDE_SKILL_DIR}/bootstrap.sh --stamp`, commit the update as its own commit and move the integration branch to it with `git branch -f <integration branch> main`. With a `repository`, push main and run `node scripts/agent-local.mjs publish`; done when `node scripts/agent-issues.mjs sync --check` passes.
 
 ## Run the stages as gates
 
