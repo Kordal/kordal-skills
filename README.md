@@ -1,17 +1,19 @@
 # kordal-skills
 
-Three Claude Code skills that plan and deliver a product with agents: `/kordal-plan` decides what to build, `/kordal-build` builds it, `/kordal-improve` finds what is worth improving. The repository of the project is the source of truth; GitHub issues mirror it.
+[Claude Code](https://claude.com/claude-code) skills that plan and deliver a product with agents: `/kordal-plan` decides what to build, `/kordal-build` builds it, `/kordal-improve` finds what is worth improving. Four agents do the delivery, review and investigation work they dispatch. The repository of the project is the source of truth; GitHub issues mirror it.
 
 ## Install
 
 ```bash
-git clone git@github.com:Kordal/kordal-skills.git ~/Development/kordal-skills
+git clone https://github.com/Kordal/kordal-skills.git ~/Development/kordal-skills
 mkdir -p ~/.claude/skills ~/.claude/agents
 for skill in ~/Development/kordal-skills/kordal-*/; do ln -sfn "${skill%/}" ~/.claude/skills/; done
 for agent in ~/Development/kordal-skills/agents/*.md; do ln -sfn "$agent" ~/.claude/agents/; done
 ```
 
-Needs `git`, `node`, `make` and, for the GitHub mirror, `gh` logged in. The skills load in Claude Code sessions started after the install.
+Any folder works in place of `~/Development/kordal-skills`. The links make a `git pull` there update every skill and agent.
+
+Needs Claude Code, `git`, `node`, `make` and, for the GitHub mirror, `gh` logged in. The skills load in Claude Code sessions started after the install.
 
 Every skill and agent runs on the model you choose for the session; none of them sets a model or an effort level. To pin one, add `model:` and `effort:` to the frontmatter of a skill or an agent.
 
@@ -31,6 +33,19 @@ Every skill and agent runs on the model you choose for the session; none of them
 | `/kordal-build-all` | Delivers the whole queue, one agent per task; up to five independent tasks in parallel, each in its own worktree |
 | `/kordal-build-serial` | The same, one task at a time |
 | `/kordal-build-ship` | Opens the pull request of the accepted milestone or feature, then stops the dev servers, emulators and containers the milestone started. The owner merges |
+
+Every command runs only when you type it; Claude does not start one on its own.
+
+## Agents
+
+The skills dispatch these; you do not call them yourself.
+
+| Agent | Dispatched by | Does |
+| --- | --- | --- |
+| `kordal-builder` | `/kordal-build-all`, `/kordal-build-serial` | Delivers one task, from claim to report |
+| `kordal-task-reviewer` | `/kordal-build` | Reviews one task's diff on both axes, Standards and Spec. Read-only |
+| `kordal-reviewer` | `/kordal-build` | Reviews the milestone's diff on one axis; two run side by side. Read-only |
+| `kordal-investigator` | `/kordal-improve` | Reads the code and searches how others solve the question. Read-only |
 
 ## Planning a milestone
 
@@ -63,7 +78,6 @@ Per task: claim, implement, gate, review, finish, report.
 - **Review.** The diff on two axes, Standards and Spec, in one pass by the `kordal-task-reviewer` agent, in a context that has not seen the implementation, read-only. The milestone review uses two reviewers, one per axis. Recorded in the plan; an unreviewed task cannot be finished.
 - **No slow testing per task.** A task runs lint and unit tests only. Browser, device and end-to-end tests are written in the task and run once, at the end.
 - **Report.** What was added, what was verified, how to try it, what is next; also posted on the task's issue.
-
 - **First look.** The first task that changes what a user sees ends with a stop: the owner looks at the running product on the target devices before the rest is built on it.
 - **Budget.** The scope names the test data size and how long the gates may take; `gate` reports its duration and says when it went over.
 
@@ -111,10 +125,18 @@ bash kordal-plan/bootstrap.sh --diff <dir>   # what changed since the project's 
 bash kordal-plan/bootstrap.sh --stamp <dir>  # record the current version
 ```
 
-Before committing, bootstrap a throwaway project and run `make agent-check` and `bash tests/integration/check-docs.sh` in it.
+Before committing, run the scaffold's tests, then bootstrap a throwaway project and run `make agent-check` and `bash tests/integration/check-docs.sh` in it.
+
+```bash
+(cd kordal-plan/scaffold && node --test scripts/*.test.mjs)
+```
 
 `kordal-plan/migrate.mjs` renames a project scaffolded when the unit was called an MVP (`"mvp"`, `mvp<N>`, "MVP <N>") to milestones; `/kordal-plan-update` runs it first. Its tests: `node --test kordal-plan/migrate.test.mjs`.
 
 ## Status
 
-The scripts are covered by their own tests. The two slash commands have not yet been run end to end on a real project, and the GitHub mirror has written only to a fake `gh` in tests.
+Early and changing often. The scripts are covered by their own tests, and the workflow carries the lessons of its first two runs. The GitHub mirror is tested against a fake `gh`.
+
+## License
+
+[MIT](LICENSE). Copyright (c) 2026 Kordal.
