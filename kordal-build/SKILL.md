@@ -31,7 +31,7 @@ Before starting a step of "Deliver one task", tell the owner in one line which t
 2. **Implement** the plan: its ADRs first, then every acceptance criterion including the failure behaviour, with the tests the plan names. Commit.
 3. **Gate.** `node scripts/agent-local.mjs gate`. Done when it records a pass for the commit.
 4. **Review.** Run [the review](#the-review) on the diff since the integration branch, against the task's plan. Fix every confirmed finding; a runtime fix returns to step 3. Done when the plan's Review section records the reviewed commit, the reviewer and each finding with its resolution.
-5. **Check.** Start the product on the gated commit and walk the plan's Flow as a user would, with the browser tool of this session or the project's own browser tests: the journey and each failure path. Fix what you find; a runtime fix returns to step 3. Then tick each acceptance criterion you saw work, fill the Completion Notes, move the plan to `completed/`, commit.
+5. **Complete the plan.** A task runs lint and unit tests and nothing slower: no product, emulator or app build is started to check it, and the slower tests it wrote wait for the acceptance task. Tick each acceptance criterion the code and its tests deliver, fill the Completion Notes, move the plan to `completed/`, commit.
 6. **Finish.** `node scripts/agent-local.mjs finish <ID>`. Done when it prints that the task is on the integration branch and, with a GitHub mirror, that the branch was pushed and the issues synced. A warning that GitHub was not updated is repaired with `node scripts/agent-local.mjs publish` before the report.
 7. **Report.** Give the owner the status update of the workflow's "Report" section, and post it on the task's issue as that section says.
 
@@ -58,12 +58,12 @@ Then deliver the queue in rounds, until `next` lists no `READY` task and none th
 1. **Pick the round**: the `READY` tasks, up to three, whose plans' Affected Components do not overlap. Tasks that touch the same files go into separate rounds, in manifest order. `all serial` picks one task per round.
 2. **Announce it** to the owner: `Round 2 · CAP-003, CAP-005 in parallel · 4 of 6 tasks left`. The agents' steps stay inside their own contexts, so this line and the status updates at the end are what the owner sees of a round.
 3. **Prepare** a round of more than one task: `claim` each task here, one after the other, and give each its own checkout next to the project: `git worktree add ../<project>.worktrees/<id> task/<id>`. A round of one task needs neither; its agent claims the task itself in this checkout.
-4. **Dispatch** one `kordal-builder` agent per task (a generic subagent where that agent is missing), all in one message so that they run side by side, each in the foreground: "Read `${CLAUDE_SKILL_DIR}/SKILL.md` and deliver task `<ID>` by its section 'Deliver one task', in `<its checkout>`. The task is claimed on its branch there. Give the product its own ports and data in this checkout, as the workflow says. End with the verbatim output of `finish` and the status update."
+4. **Dispatch** one `kordal-builder` agent per task (a generic subagent where that agent is missing), all in one message so that they run side by side, each in the foreground: "Read `${CLAUDE_SKILL_DIR}/SKILL.md` and deliver task `<ID>` by its section 'Deliver one task', in `<its checkout>`. The task is claimed on its branch there. End with the verbatim output of `finish` and the status update."
 5. **Verify** each result yourself: `next` no longer lists the task. A task an agent left unfinished is yours to resume by "Deliver one task" in its checkout. Where `next` reports GitHub out of sync, run `node scripts/agent-local.mjs publish`.
 6. **Clean up** the round's checkouts: `git worktree remove ../<project>.worktrees/<id>`.
 7. **Relay** the status updates in task order, and start the next round without waiting for an answer, except after the task that owes the owner a [first look](#stop-and-ask): put that task in a round of its own.
 
-Tasks of one round finish one after the other: the second to finish finds the integration branch moved, merges it and gates again, as the workflow says. A project whose gate cannot run in two checkouts at once, because of fixed ports or one shared database, is delivered with `all serial`; when the gates of a first parallel round collide, finish that round one task at a time, continue serially and tell the owner.
+Tasks of one round finish one after the other: the second to finish finds the integration branch moved, merges it and gates again, as the workflow says. The task gate starts nothing, so it runs in several checkouts at once. A project whose task gate still needs a fixed port or one shared database is delivered with `all serial`; when the gates of a first parallel round collide, finish that round one task at a time, continue serially and tell the owner.
 
 The milestone's acceptance task is yours, not a subagent's: when it is the task to take, deliver it by [The acceptance task](#the-acceptance-task). So is the last task of [a standalone feature](#a-standalone-feature). When only `WAIT` and `BLOCKED` tasks remain, report each blocker with who resolves it and stop.
 
@@ -71,13 +71,14 @@ The milestone's acceptance task is yours, not a subagent's: when it is the task 
 
 Follow the workflow's "The acceptance task" section on the task's own branch:
 
-1. **Milestone review.** Run [the review](#the-review) on the diff since main. Add each confirmed high or medium finding as a task and deliver it by "Deliver one task"; list the low ones under "Follow-up" in the test document. Then merge the integration branch and review once more, the diff of the fix tasks only. Done when that review has no high or medium finding and `docs/product/milestone<N>-test.md` records both reviews.
-2. **Owner acceptance.** Complete the test document, start the product, give the owner the checklist and how to reach the running product, and stop. The owner's test is a gate; the milestone waits there until the owner answers. Deliver every failure the owner reports as a task, then hand the updated checklist back.
-3. **Finish.** When the owner says the milestone passes, record it in the test document, run the full gates (`gate pr-check`, `gate premerge-check`), finish the task and tell the owner `/kordal-build-ship` is next.
+1. **Full check.** Run both full gates (`gate pr-check`, `gate premerge-check`), then start the product and walk every task's Flow on each target device, with the browser tool of this session or the project's own tooling. Deliver each failure as a task and run the failed part again.
+2. **Milestone review.** Run [the review](#the-review) on the diff since main. Add each confirmed high or medium finding as a task and deliver it by "Deliver one task"; list the low ones under "Follow-up" in the test document. Then merge the integration branch and review once more, the diff of the fix tasks only. Done when that review has no high or medium finding and `docs/product/milestone<N>-test.md` records both reviews.
+3. **Owner acceptance.** Complete the test document, leave the product running, give the owner the checklist and how to reach the running product, and stop. The owner's test is a gate; the milestone waits there until the owner answers. Deliver every failure the owner reports as a task, then hand the updated checklist back.
+4. **Finish.** When the owner says the milestone passes, record it in the test document, run the full gates again where a fix task merged since the full check, finish the task and tell the owner `/kordal-build-ship` is next.
 
 ## A standalone feature
 
-A feature on its own `feature/<slug>` branch has no acceptance task. Its last task carries the acceptance: deliver it by "Deliver one task" up to the check, then follow the workflow's "A standalone feature" section before `finish`. Take that task yourself, as you take an acceptance task, because it stops for the owner.
+A feature on its own `feature/<slug>` branch has no acceptance task. Its last task carries the acceptance: deliver it by "Deliver one task" up to the review, then follow the workflow's "A standalone feature" section before `finish`. Take that task yourself, as you take an acceptance task, because it stops for the owner.
 
 ## Ship
 

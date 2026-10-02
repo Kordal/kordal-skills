@@ -66,17 +66,17 @@ Six stages; a stage closes only with evidence. The owner decides at the stages i
 
 ## Delivering
 
-Per task: claim, implement, gate, review, check, finish, report.
+Per task: claim, implement, gate, review, finish, report.
 
 - **Gate.** `make task-check`, the fast gate, on the task's commit; a runtime change after it needs the gate again. The full gate, `make pr-check` with the slow suites, runs once: `finish` demands it of the task that completes the queue.
 - **Review.** The diff on two axes, Standards and Spec, by the `kordal-reviewer` agent: Opus 5.5 at high effort, in a context that has not seen the implementation, read-only. Recorded in the plan; an unreviewed task cannot be finished.
-- **Check.** Claude starts the product and walks the task's flow as a user would, including the failure paths; nothing is recorded but the ticked criteria.
+- **No slow testing per task.** A task runs lint and unit tests only. Browser, device and end-to-end tests are written in the task and run once, at the end.
 - **Report.** What was added, what was verified, how to try it, what is next; also posted on the task's issue.
 
 - **First look.** The first task that changes what a user sees ends with a stop: the owner looks at the running product on the target devices before the rest is built on it.
 - **Budget.** The scope names the test data size and how long the gates may take; `gate` reports its duration and says when it went over.
 
-A milestone ends with its acceptance task: a review of the whole milestone, then a test list for the owner in `docs/product/milestone<N>-test.md`. Each failure the owner reports becomes a task. Only after the owner accepts does `/kordal-build-ship` open the pull request.
+A milestone ends with its acceptance task: the full check (every slow suite and a walk through the whole product on each target device), a review of the whole milestone, then a test list for the owner in `docs/product/milestone<N>-test.md`. Each failure the owner reports becomes a task. Only after the owner accepts does `/kordal-build-ship` open the pull request.
 
 ## GitHub
 

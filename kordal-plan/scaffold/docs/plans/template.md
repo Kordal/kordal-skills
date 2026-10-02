@@ -22,7 +22,7 @@ ADRs: none
 
 ## Acceptance Criteria
 
-<!-- Observable user/API outcomes, including failure behaviour, as checkboxes. Tick each when you have seen it work. -->
+<!-- Observable user/API outcomes, including failure behaviour, as checkboxes. Tick each when the code and its tests deliver it. -->
 
 - [ ] <!-- criterion -->
 
@@ -48,7 +48,7 @@ ADRs: none
 
 ## Tests
 
-<!-- Tests that prove the task is done. -->
+<!-- Unit tests, which the task gate runs. Then the slower tests (browser, device, end-to-end, measurement): the task writes them and adds their stage to MILESTONE_STAGES; they run once, at the end of the milestone. -->
 
 ## Review
 

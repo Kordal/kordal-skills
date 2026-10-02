@@ -25,7 +25,7 @@ Introduce another technology only when the active task requires it, with an ADR.
 ## Rules
 
 1. **Architecture changes** require an ADR in `docs/adr/` (see [docs/adr/README.md](docs/adr/README.md)).
-2. **Tests** accompany every piece of functionality; a change is done when its tests pass. `make lint` and `make test` need nothing running; `make task-check` is the gate of every task; `make pr-check`, the full gate, and `make premerge-check` run once, when the milestone is complete.
+2. **Tests** accompany every piece of functionality; a change is done when its tests pass. `make lint` and `make test` need nothing running; `make task-check` is the gate of every task and all a task runs; `make pr-check`, the full gate, and `make premerge-check` run once, when the milestone is complete, with every slower test the tasks wrote.
 3. **Stay on task.** Implement only the selected task. Move its plan from `docs/plans/planned/` to `active/` when work starts and to `completed/` before the task is integrated. Record unrelated follow-up work in Completion Notes.
 
 <!-- Planning stage 4 and later ADRs add the product's own rules here: data ownership, communication between components, public contracts, migrations. -->
