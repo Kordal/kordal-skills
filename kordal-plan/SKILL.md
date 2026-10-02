@@ -33,7 +33,7 @@ When `$ARGUMENTS` starts with `feature`, plan the rest of it by the "Plan a feat
 - The fit check is a real gate. A feature over its limits ends the run with the limit it broke and the advice to run `/kordal-plan`; the owner alone may overrule that.
 - Two owner decisions, both with `AskUserQuestion`: the feature sentence at step 1, the plans at step 3. Everything else is yours.
 - Write the plans with `writing-for-agents`.
-- Finish with the first task and the output of `next`, and say `/kordal-build` delivers it.
+- Finish with the first task and the output of `next`, and say `/kordal-build` delivers it, in a new chat.
 
 ## Update a scaffolded project
 
@@ -79,4 +79,4 @@ Everything else is yours to resolve: routine engineering choices, task splits, d
 
 Planning writes documents: the research note, the scope draft, Proposed ADRs, plans in `docs/plans/planned/`. The active milestone's queue, claims, branches and manifest change only at stage 6, after that queue is finished or the owner hands it off.
 
-Finish with the stage 6 handoff: the first ready task, the remaining blockers with who resolves each, and the output of the three structure checks and `node scripts/agent-local.mjs next`. Delivery starts with `/kordal-build`.
+Finish with the stage 6 handoff: the first ready task, the remaining blockers with who resolves each, and the output of the three structure checks and `node scripts/agent-local.mjs next`. Delivery starts in a new chat: end by telling the owner to open one in this project and type `/kordal-build-all` there, so that the milestone is built on an empty context.

@@ -21,6 +21,10 @@ The project's `docs/agents/workflow.md` is the single source of truth for claimi
 
 Delivery runs on Opus 5.5 at medium effort: the frontmatter pins it for the turn that invokes the skill, the `kordal-builder` agent for every task of the queue. A task is reviewed once, by the `kordal-task-reviewer` agent at medium effort; the milestone by `kordal-reviewer` at high effort.
 
+## A new chat per milestone
+
+A milestone is delivered in a chat of its own, so that it starts with an empty context: everything it needs is in the repository. Before the first task of a run, look at this conversation. Where it already holds the planning of this milestone, the delivery of another one, or other long work, deliver nothing: tell the owner to open a new chat in this project and type the same command there, and stop. A conversation that holds only earlier tasks of this same milestone continues.
+
 ## Announce every step
 
 Before starting a step of "Deliver one task", tell the owner in one line which task and which step begins: `CAP-003 · step 3 of 7 · Gate`. Add what the step just before it produced when that is one fact: the commit, the gate's duration, the number of review findings. The acceptance task and the pull request announce their parts the same way.
@@ -89,7 +93,7 @@ Ship only on `/kordal-build-ship`: the pull request to main is the milestone's r
 
 1. Confirm the gate before the pull request: `next` lists nothing, and the test document on the integration branch records the owner's acceptance: `docs/product/milestone<N>-test.md`, with the milestone review, or `docs/product/feature-<slug>-test.md`.
 2. Follow the workflow's "Open the pull request when the work is done" section.
-3. Report the pull request's URL and the state of its checks, and stop: the owner merges.
+3. Report the pull request's URL and the state of its checks, and stop: the owner merges. Say that the next milestone is planned and delivered in new chats.
 
 ## Stop and ask
 

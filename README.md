@@ -67,6 +67,8 @@ Six stages; a stage closes only with evidence. The owner decides at the stages i
 
 ## Delivering
 
+A milestone is delivered in a chat of its own: planning ends by sending you to a new one, and `/kordal-build` declines to start in a conversation that already holds other long work.
+
 Per task: claim, implement, gate, review, finish, report.
 
 - **Gate.** `make task-check`, the fast gate, on the task's commit; a runtime change after it needs the gate again. The full gate, `make pr-check` with the slow suites, runs once: `finish` demands it of the task that completes the queue.
