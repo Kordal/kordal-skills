@@ -21,7 +21,7 @@ The project's `docs/agents/workflow.md` is the single source of truth for claimi
 1. **Place.** Run `node scripts/agent-local.mjs next`. A `CLAIMED` task whose branch no other worktree has checked out (`git worktree list`) is resumed on its branch; otherwise claim the task and switch to `task/<id>`. Move the plan to `active/`.
 2. **Implement** the plan: its ADRs first, then every acceptance criterion including the failure behaviour, with the tests the plan names. Commit.
 3. **Gate.** `node scripts/agent-local.mjs gate`. Done when it records a pass for the commit.
-4. **Review.** Run the `code-review` skill on the diff since the integration branch, on both axes: Standards and Spec. Fix every confirmed finding; a runtime fix returns to step 3.
+4. **Review.** Run the `code-review` skill on the diff since the integration branch: it reviews the workflow's two axes, Standards and Spec, in fresh subagents. Fix every confirmed finding; a runtime fix returns to step 3. Done when the plan's Review section records the reviewed commit and each finding with its resolution.
 5. **Evidence.** Start the product on the gated commit and take the screenshots the workflow requires, with the browser tool of this session or the project's own browser tests. Look at each screenshot before recording it: it shows the feature working, with real data. Fill the plan's Evidence and Completion Notes, tick each acceptance criterion you checked against evidence, move the plan to `completed/`, commit.
 6. **Finish.** `node scripts/agent-local.mjs finish <ID>`. Done when it prints that the task is on the integration branch and, with a GitHub mirror, that the branch was pushed and the issues synced. A warning that GitHub was not updated is repaired with `node scripts/agent-local.mjs publish` before the report.
 7. **Report.** Give the owner the status update of the workflow's "Report" section, and post it on the task's issue as that section says. Show the owner the screenshots themselves: send the files where the session can, link their paths otherwise.
@@ -35,11 +35,15 @@ Repeat until `next` lists no `READY` task and none this checkout left `CLAIMED`:
 3. Verify the result yourself: `next` no longer lists the task, and the screenshot files exist. A task the subagent left unfinished is yours to resume by "Deliver one task".
 4. Relay the status update and the screenshots to the owner, and continue with the next task without waiting for an answer.
 
-When the queue is empty, run [Owner acceptance](#owner-acceptance). When only `WAIT` and `BLOCKED` tasks remain, report each blocker with who resolves it and stop.
+When the queue is empty, run [MVP review](#mvp-review), then [Owner acceptance](#owner-acceptance). When only `WAIT` and `BLOCKED` tasks remain, report each blocker with who resolves it and stop.
+
+## MVP review
+
+Follow the workflow's "MVP review" section with the `code-review` skill on the diff since main. Deliver each confirmed finding as a task by "Deliver one task", and review again. Done when the review of the current head has no open finding and `docs/product/mvp<N>-test.md` records it.
 
 ## Owner acceptance
 
-Follow the workflow's "Owner acceptance" section: write `docs/product/mvp<N>-test.md`, start the product, give the owner the checklist and how to reach the running product, and stop. The owner's test is a gate; the MVP waits there until the owner answers.
+Follow the workflow's "Owner acceptance" section: complete `docs/product/mvp<N>-test.md`, start the product, give the owner the checklist and how to reach the running product, and stop. The owner's test is a gate; the MVP waits there until the owner answers.
 
 Deliver every failure the owner reports as a task, then hand the updated checklist back. When the owner says the MVP passes, record it in the test document and tell them `/kordal-build ship` is next.
 
@@ -47,7 +51,7 @@ Deliver every failure the owner reports as a task, then hand the updated checkli
 
 Ship only on `/kordal-build ship`: the pull request to main is the MVP's release, so it is opened on the owner's explicit command and in no other mode.
 
-1. Confirm the gate before the push: `next` lists nothing, and `docs/product/mvp<N>-test.md` records the owner's acceptance of the current head of the integration branch. Commits after the accepted one go back to the owner first.
+1. Confirm the gate before the push: `next` lists nothing, and `docs/product/mvp<N>-test.md` records the MVP review and the owner's acceptance of the current head of the integration branch. Commits after the accepted one go back to the owner first.
 2. Follow the workflow's "Push when the MVP is done" section.
 3. Report the pull request's URL and the state of its checks, and stop: the owner merges.
 

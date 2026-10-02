@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const manifestPath = 'docs/plans/backlog.json';
 const phases = ['planned', 'active', 'completed'];
-const requiredSections = ['Goal', 'Context', 'Task Contract', 'Scope', 'Out of Scope', 'Affected Components', 'Acceptance Criteria', 'Flow', 'Implementation Steps', 'Tests', 'Risks', 'Evidence', 'Completion Notes'];
+const requiredSections = ['Goal', 'Context', 'Task Contract', 'Scope', 'Out of Scope', 'Affected Components', 'Acceptance Criteria', 'Flow', 'Implementation Steps', 'Tests', 'Risks', 'Evidence', 'Review', 'Completion Notes'];
 const assert = (condition, message) => { if (!condition) throw new Error(message); };
 const planPath = (task, phase) => `docs/plans/${phase}/${task.id}-${task.slug}.md`;
 const readLocal = (file) => { try { return fs.readFileSync(path.join(root, file), 'utf8'); } catch { return null; } };
@@ -56,7 +56,7 @@ export function validateManifest(manifest, read = readLocal) {
     assert(/^- \[[ x]\] .+/m.test(section(text, 'Acceptance Criteria')), `${task.id} needs acceptance checkboxes`);
     if (phase === 'completed') {
       assert(!/^- \[ \]/m.test(section(text, 'Acceptance Criteria')), `${task.id} has incomplete acceptance criteria`);
-      for (const heading of ['Evidence', 'Completion Notes']) assert(!/^Pending\b/i.test(section(text, heading)), `${task.id} missing completion ${heading}`);
+      for (const heading of ['Evidence', 'Review', 'Completion Notes']) assert(!/^Pending\b/i.test(section(text, heading)), `${task.id} missing completion ${heading}`);
     }
     for (const adr of task.adrs) {
       assert(/^docs\/adr\/\d{3}-[a-z0-9-]+\.md$/.test(adr), `${task.id} invalid ADR path`);

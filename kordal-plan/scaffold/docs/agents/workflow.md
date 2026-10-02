@@ -50,7 +50,7 @@ Validate through the public behaviour named in the plan. UI rendering alone does
 
 ## Gate and integrate
 
-No independent reviewer follows you: the gate and your own check of every acceptance criterion against evidence are what stands between the task and the integration branch.
+No independent reviewer follows you: the gate, the review and your own check of every acceptance criterion against evidence are what stands between the task and the integration branch.
 
 1. Commit the work, then run the gate through the helper, which records a pass for that commit:
 
@@ -59,14 +59,15 @@ No independent reviewer follows you: the gate and your own check of every accept
    ```
 
    It runs `make pr-check`. A failed gate records nothing.
-2. Record the evidence in the plan and move it to `completed/`. For every change a user can see, take a screenshot of the running product on the gated commit, save it as `docs/evidence/<ID>/<what-it-shows>.png` and link it from the plan's Evidence section with a one-line caption. A task with nothing to see records the command or API output instead and says so. Where the session has no way to take a screenshot, the Evidence section says that plainly. Commits after the gate may change documentation only; a runtime change needs the gate again. [`scripts/agent-scope.mjs`](../../scripts/agent-scope.mjs) holds that rule.
-3. Integrate:
+2. Review the task's diff against the integration branch with a fresh context, as a reviewer who did not write it, on two axes. **Standards:** does the change follow `AGENTS.md`, the ADRs and the conventions of the code around it? **Spec:** does it deliver the plan's acceptance criteria and failure behaviour, and nothing outside its scope? Fix every confirmed finding; a runtime fix needs the gate again. Record in the plan's Review section the reviewed commit and each finding with what was done about it, or "No findings". `make agent-check` rejects a completed plan whose Review is pending.
+3. Record the evidence in the plan and move it to `completed/`. For every change a user can see, take a screenshot of the running product on the gated commit, save it as `docs/evidence/<ID>/<what-it-shows>.png` and link it from the plan's Evidence section with a one-line caption. A task with nothing to see records the command or API output instead and says so. Where the session has no way to take a screenshot, the Evidence section says that plainly. Commits after the gate may change documentation only; a runtime change needs the gate again. [`scripts/agent-scope.mjs`](../../scripts/agent-scope.mjs) holds that rule.
+4. Integrate:
 
    ```bash
    node scripts/agent-local.mjs finish <ID>
    ```
 
-   It refuses a dirty or foreign branch, a missing completed plan, a second task's plan in the same branch, and a runtime change without a covering gate. If the integration branch moved meanwhile, merge it into your branch and gate again. Then it fast-forwards the integration branch to your commit and updates the GitHub mirror.
+   It refuses a dirty or foreign branch, a missing or unreviewed completed plan, a second task's plan in the same branch, and a runtime change without a covering gate. If the integration branch moved meanwhile, merge it into your branch and gate again. Then it fast-forwards the integration branch to your commit and updates the GitHub mirror.
 
 A documentation task needs no gate.
 
@@ -91,11 +92,17 @@ With a GitHub mirror, post the same update on the task's issue: write it to a fi
 
 A gate stage is a make target; a task that adds a kind of check adds its stage. A new repository has no product checks: `make test` fails until the first runtime task puts its tests there, and `make premerge-check` fails until a task gives it stages. Each gate prints the duration of every stage, also after a failure.
 
+## MVP review
+
+When every task of the MVP is on the integration branch, review the whole MVP before the owner tests it: the diff from main to the integration branch, on the same two axes as a task. Standards now covers how the tasks fit together: duplicated logic, inconsistent naming and interfaces between tasks, a decision one task made and another ignored. Spec is every acceptance scenario of `docs/product/mvp<N>.md` against the assembled product.
+
+Each confirmed finding becomes a task, delivered through this workflow. Done when a review of the current head has no open finding; record that review, with its commit and its findings, in the "Review" section that opens `docs/product/mvp<N>-test.md`.
+
 ## Owner acceptance
 
-When every task of the MVP is on the integration branch, the owner tests the product before anything is pushed.
+After the MVP review, the owner tests the product.
 
-Write `docs/product/mvp<N>-test.md`:
+Write the rest of `docs/product/mvp<N>-test.md`:
 
 - how to start the product from the integration branch;
 - a checklist in journey order, built from the acceptance scenarios of the MVP's scope and the "Try it" steps of every task: what to do, and what the owner should see;

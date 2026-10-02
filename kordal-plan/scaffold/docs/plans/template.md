@@ -56,6 +56,12 @@ ADRs: none
 
 Pending.
 
+## Review
+
+<!-- Filled before the task is integrated: the reviewed commit, then every finding on the two axes (Standards, Spec) with what was done about it, or "No findings". -->
+
+Pending.
+
 ## Risks
 
 <!-- Known risks and open questions. -->

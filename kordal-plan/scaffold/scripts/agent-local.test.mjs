@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 // The real scripts/agent-local.mjs in a real Git repository: two tasks, the
 // second depending on the first, both planned on main and on the integration
 // branch mvp1. `make` is a fake that passes or fails as GATE_RESULT says.
-const sections = ['Goal', 'Context', 'Task Contract', 'Scope', 'Out of Scope', 'Affected Components', 'Acceptance Criteria', 'Flow', 'Implementation Steps', 'Tests', 'Risks', 'Evidence', 'Completion Notes'];
+const sections = ['Goal', 'Context', 'Task Contract', 'Scope', 'Out of Scope', 'Affected Components', 'Acceptance Criteria', 'Flow', 'Implementation Steps', 'Tests', 'Risks', 'Evidence', 'Review', 'Completion Notes'];
 const tasks = [
   { id: 'CAP-001', title: 'Identity', slug: 'identity', depends_on: [], adrs: [] },
   { id: 'CAP-002', title: 'Freshness', slug: 'freshness', depends_on: ['CAP-001'], adrs: [] },
@@ -125,4 +125,13 @@ test('finish refuses an unfinished, foreign, dirty or outdated branch and a chec
   f.git('worktree', 'remove', path.join(f.dir, 'bin/other'));
   assert.equal(f.cli(['finish', 'CAP-001']).status, 0);
   assert.equal(f.git('rev-parse', 'mvp1'), f.git('rev-parse', 'task/cap-001'));
+});
+test('finish refuses a task whose review is not recorded', t => {
+  const f = fixture(t);
+  f.implement();
+  assert.equal(f.cli(['gate']).status, 0);
+  f.write('docs/plans/completed/CAP-001-identity.md', plan(tasks[0]).replace('## Review\n\nText.', '## Review\n\nPending.'));
+  f.commit('evidence without a review');
+  assert.match(f.cli(['finish', 'CAP-001']).stderr, /CAP-001 missing completion Review/);
+  assert.equal(f.git('rev-parse', 'mvp1'), f.git('rev-parse', 'main'));
 });
