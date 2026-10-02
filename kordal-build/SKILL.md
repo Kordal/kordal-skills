@@ -2,8 +2,6 @@
 name: kordal-build
 description: Deliver the planned milestone through the project's delivery workflow - the next ready task, a named task, the whole queue, or the final push.
 disable-model-invocation: true
-model: claude-opus-5-5
-effort: medium
 argument-hint: "[task ID | all | all serial | ship]"
 ---
 
@@ -18,8 +16,6 @@ Deliver the tasks `/kordal-plan` prepared. `$ARGUMENTS` picks the mode:
 | `ship` | [Ship](#ship): open the pull request of the milestone or the feature |
 
 The project's `docs/agents/workflow.md` is the single source of truth for claiming, gates, the review, the status update, the acceptance task and the pull request. Read it in full now, with `AGENTS.md` and `docs/agents/claude.md`. This skill adds only how to run it in a Claude session. A project without that file is planned first: tell the owner to run `/kordal-plan`.
-
-Delivery runs on Opus 5.5 at medium effort: the frontmatter pins it for the turn that invokes the skill, the `kordal-builder` agent for every task of the queue. A task is reviewed once, by the `kordal-task-reviewer` agent at medium effort; the milestone by `kordal-reviewer` at high effort.
 
 ## Announce every step
 
@@ -39,8 +35,8 @@ Before starting a step of "Deliver one task", tell the owner in one line which t
 
 A reviewer with a context of its own, which has not seen the implementation, and which only reads.
 
-- **A task** gets one pass: dispatch the `kordal-task-reviewer` agent once, in the foreground (Opus 5.5 at medium effort, both axes in one report).
-- **The milestone review**, and the review of a whole standalone feature, get two: dispatch the `kordal-reviewer` agent twice in one message, "Axis: Standards" and "Axis: Spec" (Opus 5.5 at high effort).
+- **A task** gets one pass: dispatch the `kordal-task-reviewer` agent once, in the foreground (both axes in one report).
+- **The milestone review**, and the review of a whole standalone feature, get two: dispatch the `kordal-reviewer` agent twice in one message, "Axis: Standards" and "Axis: Spec".
 
 Give each dispatch the repository path, the exact diff command (`git diff <base>...HEAD`), and what to judge against: `AGENTS.md` and the ADRs for Standards; the plan's path, or `docs/product/milestone<N>.md` for a milestone review, for Spec.
 
@@ -53,7 +49,7 @@ Where the reviewing agent is missing or its dispatch fails, run the `code-review
 Open with the plan of the run, before the first task, in one short message:
 
 - **Tasks**, in the order they will be delivered: ID and title of every unfinished task from `next`, the acceptance task last, and which of them can run in parallel. Mark a `BLOCKED` task with its blocker: the run stops before it.
-- **Models**: delivery, `kordal-builder`; task review, `kordal-task-reviewer`; milestone review, `kordal-reviewer`; the acceptance task and this session. Read each agent's model and effort from its definition in `~/.claude/agents/` and name this session's own model; where an agent is missing, say that a generic subagent on the session's model takes its place.
+- **Models**: delivery, `kordal-builder`; task review, `kordal-task-reviewer`; milestone review, `kordal-reviewer`; the acceptance task and this session. Name the model each runs on: the one its agent definition sets, else this session's. Where an agent is missing, say that a generic subagent takes its place.
 - **Where it stops**: at the owner's test in the acceptance task, and at the conditions under "Stop and ask".
 
 Then deliver the queue in rounds, until `next` lists no `READY` task and none this checkout left `CLAIMED`:

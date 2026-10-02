@@ -2,8 +2,6 @@
 name: kordal-improve
 description: Investigate an improvement question about the product or its code and return evidenced findings and ranked proposals for the owner to choose from.
 disable-model-invocation: true
-model: claude-opus-5-5
-effort: high
 argument-hint: "<question>"
 ---
 
@@ -19,7 +17,7 @@ Where the question concerns behaviour, start the product and use the part in que
 
 ## 3. Investigate
 
-Dispatch the `kordal-investigator` agent in the foreground (Opus 5.5 at high effort; a generic subagent where that agent is missing, and then say so in the report). Give it the question, the confirmed criteria, the repository path, and your observations.
+Dispatch the `kordal-investigator` agent in the foreground (a generic subagent where that agent is missing, and then say so in the report). Give it the question, the confirmed criteria, the repository path, and your observations.
 
 Check its report before passing it on: open each cited `file:line`, and drop or mark "unverified" a finding whose evidence you cannot find.
 

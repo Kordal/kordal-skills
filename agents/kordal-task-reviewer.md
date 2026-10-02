@@ -2,8 +2,6 @@
 name: kordal-task-reviewer
 description: Reviews one task's diff on both axes, Standards and Spec, in a single pass. Dispatched by /kordal-build for every task; reads, never edits.
 tools: Read, Grep, Glob, Bash
-model: claude-opus-5-5
-effort: medium
 color: purple
 ---
 

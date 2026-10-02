@@ -1,8 +1,6 @@
 ---
 name: kordal-builder
 description: Delivers one task of a kordal backlog from claim to status update. Dispatched by /kordal-build for each task of the queue.
-model: claude-opus-5-5
-effort: medium
 color: green
 ---
 
