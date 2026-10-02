@@ -86,3 +86,19 @@ test('a completed task has met criteria, recorded evidence, a recorded review an
   delete f.files[adr];
   assert.throws(f.check, /CAP-002 missing ADR/);
 });
+test('the command fails on an invalid manifest, also when run through a symlink', async t => {
+  const fs = await import('node:fs'), os = await import('node:os'), path = await import('node:path');
+  const { spawnSync } = await import('node:child_process'), { fileURLToPath } = await import('node:url');
+  const dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'agent-workflow-')));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  fs.mkdirSync(path.join(dir, 'project/scripts'), { recursive: true });
+  fs.mkdirSync(path.join(dir, 'project/docs/plans'), { recursive: true });
+  fs.copyFileSync(fileURLToPath(new URL('./agent-workflow.mjs', import.meta.url)), path.join(dir, 'project/scripts/agent-workflow.mjs'));
+  fs.writeFileSync(path.join(dir, 'project/docs/plans/backlog.json'), JSON.stringify({ version: 2 }));
+  fs.symlinkSync(path.join(dir, 'project'), path.join(dir, 'link'));
+  for (const root of ['project', 'link']) {
+    const result = spawnSync(process.execPath, [path.join(dir, root, 'scripts/agent-workflow.mjs'), 'check'], { encoding: 'utf8' });
+    assert.equal(result.status, 1, root);
+    assert.match(result.stderr, /FAIL: Unsupported manifest version/);
+  }
+});

@@ -56,8 +56,8 @@ function planText(manifest, task, state) {
   assert(file, `${task.id} has no plan in this checkout`);
   return fs.readFileSync(file, 'utf8');
 }
-// Every worktree renders the same body: the criteria are ticked when the
-// task is done, whatever the plan of the checkout at hand says meanwhile.
+// The criteria are ticked when the task is done, whatever the plan of the
+// checkout at hand says meanwhile; the rest of the body is that plan's text.
 export function issueBody(manifest, task, state, text) {
   const criteria = section(text, 'Acceptance Criteria').split('\n').filter(l => /^- \[[ x]\] /.test(l)).map(l => `- [${state === 'DONE' ? 'x' : ' '}] ${l.slice(6)}`);
   const dependencies = task.depends_on.map(id => { const issue = manifest.tasks.find(t => t.id === id).issue; return issue ? `#${issue} (${id})` : id; });
@@ -109,27 +109,28 @@ function sync(manifest, check) {
       body: issueBody(manifest, task, state, planText(manifest, task, state)),
       state: state === 'DONE' ? 'closed' : 'open',
       labels: [...issue.labels.map(l => l.name).filter(n => !n.startsWith('status:')), statusLabels[state]].sort(),
-      milestone,
+      // A finished task stays in the milestone of the MVP that delivered it.
+      milestone: state === 'DONE' && issue.milestone ? issue.milestone.number : milestone,
     };
     const patch = {};
     if (issue.title !== want.title) patch.title = want.title;
     if (normal(issue.body) !== normal(want.body)) patch.body = want.body;
     if (issue.state !== want.state) Object.assign(patch, { state: want.state }, want.state === 'closed' ? { state_reason: 'completed' } : {});
     if (JSON.stringify(issue.labels.map(l => l.name).sort()) !== JSON.stringify(want.labels)) patch.labels = want.labels;
-    if ((issue.milestone?.number ?? null) !== (milestone ?? null)) patch.milestone = milestone;
+    if ((issue.milestone?.number ?? null) !== (want.milestone ?? null)) patch.milestone = want.milestone;
     if (Object.keys(patch).length) fix(`${task.id} #${task.issue}: ${Object.keys(patch).filter(k => k !== 'state_reason').join(', ')} differ${patch.labels ? ` (wanted ${statusLabels[state]})` : ''}`, () => gh(`${repo}/issues/${task.issue}`, 'PATCH', patch));
   }
   return problems;
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (process.argv[1] && fs.realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
     const [command, ...rest] = process.argv.slice(2);
     assert(['sync', 'comment'].includes(command), 'Usage: agent-issues.mjs sync [--check] | comment <ID> <file>');
     const manifest = JSON.parse(fs.readFileSync(path.join(root, manifestPath), 'utf8'));
     validateManifest(manifest);
     if (!manifest.repository) {
-      console.log('backlog.json names no repository: no issues to sync.');
+      console.log(`backlog.json names no repository: nothing to ${command}.`);
     } else if (command === 'comment') {
       const task = manifest.tasks.find(t => t.id === rest[0]);
       assert(task?.issue, `No issue for task ${rest[0] ?? ''}`);

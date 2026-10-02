@@ -6,17 +6,17 @@
 #     ignore (an ignored file would be missing from a clone);
 #   - a link with an anchor to a Markdown file names a heading of that file.
 #
-# Only inline links — [text](target) — are checked; a path named in running
+# Only inline links — [text](target), with or without a title — are checked; a path named in running
 # text or in a code span is not. External links (http, https, mailto) are not
 # fetched. Needs git and a local Node.js: `make lint` skips it, saying so,
-# when there is none; the gate (`make pr-check`) requires Node.js.
+# when there is none; the gate (`make pr-check`) runs `make agent-check`, which requires it.
 set -euo pipefail
 
 cd "$(dirname "$0")/../.."
 
 list=$(mktemp)
 trap 'rm -f "$list"' EXIT
-files=$(git ls-files --cached --others --exclude-standard -- '*.md')
+files=$(git -c core.quotePath=false ls-files --cached --others --exclude-standard -- '*.md')
 printf '%s\n' "$files" >"$list"
 if [ -z "$files" ]; then
 	echo "FAIL  check-docs.sh found no Markdown files: not the repository root, or git failed"
@@ -42,7 +42,13 @@ const anchors = new Map();
 const anchorsOf = (file) => {
   if (!anchors.has(file)) {
     const text = fs.readFileSync(file, "utf8").replace(/```[\s\S]*?```/g, "");
-    anchors.set(file, new Set([...text.matchAll(/^#{1,6}\s+(.+)$/gm)].map((match) => slug(match[1]))));
+    // A repeated heading gets -1, -2, ... as GitHub numbers it.
+    const seen = new Map();
+    anchors.set(file, new Set([...text.matchAll(/^#{1,6}\s+(.+)$/gm)].map((match) => {
+      const base = slug(match[1]), count = seen.get(base) ?? 0;
+      seen.set(base, count + 1);
+      return count ? `${base}-${count}` : base;
+    })));
   }
   return anchors.get(file);
 };
@@ -57,8 +63,9 @@ const ignored = (file) => {
 
 for (const file of files) {
   const text = fs.readFileSync(file, "utf8").replace(/```[\s\S]*?```/g, "").replace(/`[^`\n]*`/g, "");
-  for (const match of text.matchAll(/\]\(([^)\s]+)\)/g)) {
-    const target = match[1];
+  for (const match of text.matchAll(/\]\(\s*<?([^)\s>]+)>?(?:\s+"[^"]*")?\s*\)/g)) {
+    let target = match[1];
+    try { target = decodeURIComponent(target); } catch { /* not percent-encoded */ }
     if (/^(https?:|mailto:)/.test(target)) continue;
     links += 1;
     const [relative, anchor] = target.split("#");

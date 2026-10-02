@@ -8,13 +8,13 @@ Canonical instructions for every agent working in this repository. Nested `AGENT
 
 ## Product scope
 
-<!-- Planning stage 3, updated at every stage 6: the current MVP in one sentence, linked to docs/product/mvp<N>.md; completed MVPs linked to their scope and limitations. -->
+<!-- Planning stage 3, updated at every later MVP's stage 3: the current MVP in one sentence, linked to docs/product/mvp<N>.md; completed MVPs linked to their scope and limitations. -->
 
 Implement only the scope of the selected task; proposals outside that scope remain follow-up work.
 
 ## Stack
 
-<!-- Planning stage 4: the technologies the ADRs chose, on one line. -->
+<!-- Planning stage 4: the technologies the Proposed ADRs name, on one line; their owning tasks confirm them. -->
 
 Introduce another technology only when the active task requires it, with an ADR.
 
@@ -45,7 +45,7 @@ Introduce another technology only when the active task requires it, with an ADR.
 
 An MVP is delivered locally: **no pull request and no reviewer's approval per task.** Main receives one pull request, when the whole MVP is done, and the owner merges it.
 
-One task, one branch. `node scripts/agent-local.mjs next` lists the queue; `claim <ID>` creates `task/<id>` from the integration branch; `gate` runs `make pr-check` and records the pass; `finish <ID>` puts the task on the integration branch. Where the manifest names a GitHub repository, `claim` and `finish` also push the integration branch and update the task's issue; that is the only push. Do not commit to the integration branch directly. Read your [role instructions](docs/agents/claude.md) before acting.
+One task, one branch. `node scripts/agent-local.mjs next` lists the queue; `claim <ID>` creates `task/<id>` from the integration branch; `gate` runs `make pr-check` and records the pass; `finish <ID>` puts the task on the integration branch. Where the manifest names a GitHub repository, `claim` and `finish` also push the integration branch and update the task's issue; leave every other push to the workflow's steps. Do not commit to the integration branch directly. Read your [role instructions](docs/agents/claude.md) before acting.
 
 ## Repository map
 

@@ -55,7 +55,7 @@ function publish(manifest) {
   console.error(`WARN: GitHub was not updated (${[!pushed && `push of ${branch}`, !synced && 'issue sync'].filter(Boolean).join(', ')} failed). Run: node scripts/agent-local.mjs publish`);
   return false;
 }
-const runtimeChange = (from, to) => needsGate(git('diff', '--name-only', from, to).split('\n').filter(Boolean));
+const runtimeChange = (from, to) => needsGate(git('diff', '--name-only', '--no-renames', from, to).split('\n').filter(Boolean));
 
 function main() {
   const [command = 'next', argument] = process.argv.slice(2);
@@ -103,7 +103,7 @@ function main() {
   assert(fs.existsSync(path.join(root, planPath(task, 'completed'))), `Move the plan to ${planPath(task, 'completed')} with its evidence first`);
   const base = git('rev-parse', integration), head = git('rev-parse', 'HEAD');
   assert(tryGit('merge-base', '--is-ancestor', base, head) !== null, `${integration} moved: merge it into ${taskBranch(task)}, then gate again`);
-  const files = git('diff', '--name-only', base, head).split('\n').filter(Boolean);
+  const files = git('diff', '--name-only', '--no-renames', base, head).split('\n').filter(Boolean);
   for (const other of manifest.tasks.filter(t => t.id !== task.id)) {
     for (const phase of ['active', 'completed']) assert(!files.includes(planPath(other, phase)), `This branch also changes ${other.id}; one task per branch`);
   }
@@ -119,6 +119,6 @@ function main() {
   const published = publish(manifest);
   console.log(`${task.id} is on ${integration} at ${head}. ${published === null ? 'Nothing was pushed.' : published ? `Pushed ${integration}; issues synced.` : 'GitHub was not updated.'}`);
 }
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (process.argv[1] && fs.realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try { main(); } catch (error) { console.error(`FAIL: ${error.message}`); process.exitCode = 1; }
 }

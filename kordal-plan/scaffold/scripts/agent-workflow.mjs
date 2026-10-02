@@ -77,7 +77,7 @@ export function validateManifest(manifest, read = readLocal) {
   for (const id of ids) visit(id);
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (process.argv[1] && fs.realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
     assert((process.argv[2] ?? 'check') === 'check', 'Usage: agent-workflow.mjs check');
     const text = readLocal(manifestPath);

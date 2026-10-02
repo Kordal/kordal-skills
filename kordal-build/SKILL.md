@@ -14,7 +14,7 @@ Deliver the tasks `/kordal-plan` prepared. `$ARGUMENTS` picks the mode:
 | `all` | [Work the queue](#work-the-queue) |
 | `ship` | [Ship](#ship): open the MVP's pull request |
 
-The project's `docs/agents/workflow.md` is the single source of truth for claiming, gates, evidence, the status update, owner acceptance and the push. Read it in full now, with `AGENTS.md` and `docs/agents/claude.md`. This skill adds only how to run it in a Claude session. A project without that file is planned first: tell the owner to run `/kordal-plan`.
+The project's `docs/agents/workflow.md` is the single source of truth for claiming, gates, the review, evidence, the status update, the acceptance task and the pull request. Read it in full now, with `AGENTS.md` and `docs/agents/claude.md`. This skill adds only how to run it in a Claude session. A project without that file is planned first: tell the owner to run `/kordal-plan`.
 
 ## Deliver one task
 
@@ -35,24 +35,22 @@ Repeat until `next` lists no `READY` task and none this checkout left `CLAIMED`:
 3. Verify the result yourself: `next` no longer lists the task, and the screenshot files exist. A task the subagent left unfinished is yours to resume by "Deliver one task".
 4. Relay the status update and the screenshots to the owner, and continue with the next task without waiting for an answer.
 
-When the queue is empty, run [MVP review](#mvp-review), then [Owner acceptance](#owner-acceptance). When only `WAIT` and `BLOCKED` tasks remain, report each blocker with who resolves it and stop.
+The MVP's acceptance task is yours, not a subagent's: when it is the task to take, deliver it by [The acceptance task](#the-acceptance-task). When only `WAIT` and `BLOCKED` tasks remain, report each blocker with who resolves it and stop.
 
-## MVP review
+## The acceptance task
 
-Follow the workflow's "MVP review" section with the `code-review` skill on the diff since main. Deliver each confirmed finding as a task by "Deliver one task", and review again. Done when the review of the current head has no open finding and `docs/product/mvp<N>-test.md` records it.
+Follow the workflow's "The acceptance task" section on the task's own branch:
 
-## Owner acceptance
-
-Follow the workflow's "Owner acceptance" section: complete `docs/product/mvp<N>-test.md`, start the product, give the owner the checklist and how to reach the running product, and stop. The owner's test is a gate; the MVP waits there until the owner answers.
-
-Deliver every failure the owner reports as a task, then hand the updated checklist back. When the owner says the MVP passes, record it in the test document and tell them `/kordal-build ship` is next.
+1. **MVP review.** Run the `code-review` skill on the diff since main. Add each confirmed finding as a task, deliver it by "Deliver one task", merge the integration branch and review again. Done when the review of the current head has no open finding and `docs/product/mvp<N>-test.md` records it.
+2. **Owner acceptance.** Complete the test document, start the product, give the owner the checklist and how to reach the running product, and stop. The owner's test is a gate; the MVP waits there until the owner answers. Deliver every failure the owner reports as a task, then hand the updated checklist back.
+3. **Finish.** When the owner says the MVP passes, record it in the test document, run both gates, finish the task and tell the owner `/kordal-build ship` is next.
 
 ## Ship
 
 Ship only on `/kordal-build ship`: the pull request to main is the MVP's release, so it is opened on the owner's explicit command and in no other mode.
 
-1. Confirm the gate before the push: `next` lists nothing, and `docs/product/mvp<N>-test.md` records the MVP review and the owner's acceptance of the current head of the integration branch. Commits after the accepted one go back to the owner first.
-2. Follow the workflow's "Push when the MVP is done" section.
+1. Confirm the gate before the pull request: `next` lists nothing, and `docs/product/mvp<N>-test.md` on the integration branch records the MVP review and the owner's acceptance.
+2. Follow the workflow's "Open the pull request when the MVP is done" section.
 3. Report the pull request's URL and the state of its checks, and stop: the owner merges.
 
 ## Stop and ask

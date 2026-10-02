@@ -135,3 +135,14 @@ test('finish refuses a task whose review is not recorded', t => {
   assert.match(f.cli(['finish', 'CAP-001']).stderr, /CAP-001 missing completion Review/);
   assert.equal(f.git('rev-parse', 'mvp1'), f.git('rev-parse', 'main'));
 });
+test('moving a runtime file into the documentation is still a runtime change', t => {
+  const f = fixture(t);
+  f.write('src/tool.js', 'export const tool = 1;\n');
+  f.git('switch', '--quiet', 'mvp1'); f.commit('tool'); f.git('switch', '--quiet', 'main');
+  assert.equal(f.cli(['claim', 'CAP-001']).status, 0);
+  f.git('switch', '--quiet', 'task/cap-001');
+  f.move('src/tool.js', 'docs/tool.js');
+  f.move('docs/plans/planned/CAP-001-identity.md', 'docs/plans/completed/CAP-001-identity.md');
+  f.commit('CAP-001');
+  assert.match(f.cli(['finish', 'CAP-001']).stderr, /No passed pr-check covers/);
+});

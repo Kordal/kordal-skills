@@ -27,7 +27,7 @@ A manifest that names a `repository` has a mirror of this state on GitHub; a man
 - **Integration branch:** `claim` and `finish` push it, so GitHub holds every finished task. A push of this branch starts no hosted check.
 - **Issues:** one per task, in the milestone `MVP <N>`, its body generated from the plan. Each carries one status label, the state `next` shows: `status:waiting`, `status:blocked`, `status:ready`, `status:in-progress`, `status:done`. An issue closes when its task is on the integration branch.
 
-[`scripts/agent-issues.mjs`](../../scripts/agent-issues.mjs) keeps the mirror: `claim` and `finish` run its `sync`, which changes only what differs. `node scripts/agent-issues.mjs sync --check` changes nothing and fails on any difference. When GitHub cannot be reached the local result stands, `next` reports that GitHub is out of sync, and `node scripts/agent-local.mjs publish` repairs it. Task identifiers are not issue numbers.
+[`scripts/agent-issues.mjs`](../../scripts/agent-issues.mjs) keeps the mirror: `claim` and `finish` run its `sync`, which changes only what differs on GitHub. For a task that has no issue yet it creates one and writes the number into the manifest and the plan of the checkout; commit those with the task. `node scripts/agent-issues.mjs sync --check` changes nothing and fails on any difference. When GitHub cannot be reached the local result stands, `next` reports that GitHub is out of sync, and `node scripts/agent-local.mjs publish` repairs it. Task identifiers are not issue numbers.
 
 ## Select and claim
 
@@ -88,37 +88,46 @@ With a GitHub mirror, post the same update on the task's issue: write it to a fi
 | Gate | When | Stages |
 | --- | --- | --- |
 | `make pr-check` | every task, before `finish` | `FAST_STAGES` of the Makefile: lint, the agent structure check and the tests, then whatever the product needs on every task (a clean bootstrap, acceptance, contracts, browser tests) |
-| `make premerge-check` | once on the integration branch, before the push; earlier for a task that changes shutdown, backup, upgrade or the release artifacts | `RESILIENCE_STAGES` of the Makefile: operations, backup/restore, upgrade, build and verification of the release artifacts |
+| `make premerge-check` | in the acceptance task, on the whole MVP; earlier for a task that changes shutdown, backup, upgrade or the release artifacts | `RESILIENCE_STAGES` of the Makefile: operations, backup/restore, upgrade, build and verification of the release artifacts |
 
 A gate stage is a make target; a task that adds a kind of check adds its stage. A new repository has no product checks: `make test` fails until the first runtime task puts its tests there, and `make premerge-check` fails until a task gives it stages. Each gate prints the duration of every stage, also after a failure.
 
-## MVP review
+## Add a task during delivery
 
-When every task of the MVP is on the integration branch, review the whole MVP before the owner tests it: the diff from main to the integration branch, on the same two axes as a task. Standards now covers how the tasks fit together: duplicated logic, inconsistent naming and interfaces between tasks, a decision one task made and another ignored. Spec is every acceptance scenario of `docs/product/mvp<N>.md` against the assembled product.
+A task found during delivery (a review finding, a failure the owner reports, a split of oversized work) is added in the checkout that will deliver it: write its plan from the template, add it to the manifest, and `claim` it. With a GitHub mirror the claim creates its issue and writes the number into the manifest and the plan. Switch to its branch and commit the plan and the manifest there with the work.
 
-Each confirmed finding becomes a task, delivered through this workflow. Done when a review of the current head has no open finding; record that review, with its commit and its findings, in the "Review" section that opens `docs/product/mvp<N>-test.md`.
+## The acceptance task
 
-## Owner acceptance
+The last task of every MVP is its acceptance task. It depends on every other task and delivers `docs/product/mvp<N>-test.md`. Claim it like any task; its branch holds the whole MVP. It runs in three parts.
 
-After the MVP review, the owner tests the product.
+### MVP review
+
+Review the whole MVP before the owner tests it: the diff from main to this branch, on the same two axes as a task. Standards now covers how the tasks fit together: duplicated logic, inconsistent naming and interfaces between tasks, a decision one task made and another ignored. Spec is every acceptance scenario of `docs/product/mvp<N>.md` against the assembled product.
+
+Each confirmed finding becomes a task, delivered through this workflow; then merge the integration branch into the acceptance branch and review again. Done when a review of the current head has no open finding; record that review, with its commit and its findings, in the "Review" section that opens the test document.
+
+### Owner acceptance
 
 Write the rest of `docs/product/mvp<N>-test.md`:
 
-- how to start the product from the integration branch;
+- how to start the product from this branch;
 - a checklist in journey order, built from the acceptance scenarios of the MVP's scope and the "Try it" steps of every task: what to do, and what the owner should see;
 - the failure cases to try;
 - what cannot be tested by hand, and why.
 
-Start the product, hand the owner the list and stop. Each failure the owner reports becomes a task: a plan from the template, registered in the manifest, delivered through this workflow. Update the checklist and hand it back. Done when the owner says the MVP passes and the test document records that with the date and the tested commit.
+Start the product, hand the owner the list and stop. Each failure the owner reports becomes a task; when it is finished, merge the integration branch, update the checklist and hand it back. Done when the owner says the MVP passes and the test document records that with the date and the tested commit. After the owner's test only documentation may change on this branch: a runtime change is a new commit for the owner to test.
 
-## Push when the MVP is done
+### Finish
 
-When the owner has accepted the MVP:
+Run both gates on the branch, which is what the owner tested: `node scripts/agent-local.mjs gate` and `node scripts/agent-local.mjs gate premerge-check`. Record them as the task's evidence and `finish`.
 
-1. Run `make pr-check` and `make premerge-check` on the integration branch's head.
-2. Run `node scripts/agent-issues.mjs sync --check`: the mirror matches before the pull request names its issues.
-3. Push the integration branch and open one pull request to main with Summary, Evidence and Merge Danger; the Summary lists every task with its issue.
-4. The hosted check `Agent structure` runs `make agent-check` on it. A failed, missing, cancelled or skipped check is not a pass.
-5. Report the pull request and the state of its checks to the owner, who merges it.
+## Open the pull request when the MVP is done
+
+When `next` lists nothing and the test document records the MVP review and the owner's acceptance:
+
+1. With a GitHub mirror, run `node scripts/agent-issues.mjs sync --check`: the mirror matches before the pull request names its issues.
+2. Open one pull request from the integration branch, which `finish` has pushed, to main, with Summary, Evidence and Merge Danger; the Summary lists every task with its issue.
+3. The hosted check `Agent structure` runs `make agent-check` on it. A failed, missing, cancelled or skipped check is not a pass.
+4. Report the pull request and the state of its checks to the owner, who merges it.
 
 Without a GitHub mirror, the owner decides how main receives the integration branch.

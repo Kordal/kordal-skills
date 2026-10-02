@@ -18,7 +18,7 @@ const label = text => text.replace(/"/g, '#quot;');
 
 // One node per unfinished task and one edge per depends_on entry, straight
 // from the manifest; a finished dependency is drawn as done.
-export function dependencyGraph(manifest, unfinished) {
+export function dependencyGraph(unfinished) {
   const open = new Set(unfinished.map(t => t.id));
   const lines = ['flowchart LR'], done = new Set();
   for (const task of unfinished) {
@@ -41,8 +41,8 @@ export function buildSummary({ manifest, scope, plans, adrs, revision, date }) {
     repository: manifest.repository ?? null,
     integration: manifest.integration_branch,
     revision, date,
-    scope: (scope ?? '').replace(/^# .+\n/, ''),
-    graph: dependencyGraph(manifest, unfinished),
+    scope: (scope ?? '').replace(/^# .+\n/m, ''),
+    graph: dependencyGraph(unfinished),
     tasks: unfinished.map(task => ({
       id: task.id, title: task.title, issue: task.issue ?? null, dependsOn: task.depends_on, blocker: task.external_blocker ?? null,
       adrs: task.adrs.map(file => path.basename(file, '.md')),
@@ -52,7 +52,7 @@ export function buildSummary({ manifest, scope, plans, adrs, revision, date }) {
       id: path.basename(file, '.md'),
       title: /^# (.+)$/m.exec(text)?.[1] ?? file,
       status: /\*\*Status:\*\* (\w+)/.exec(text)?.[1] ?? 'Unknown',
-      text: text.replace(/^# .+\n/, ''),
+      text: text.replace(/^# .+\n/m, ''),
     })),
   };
   // "</script>" inside the data must not end the script element.
@@ -192,7 +192,7 @@ summary { cursor: pointer; color: var(--accent); font-size: 14px; font-weight: 6
 </html>
 `;
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (process.argv[1] && fs.realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
     const manifest = JSON.parse(read('docs/plans/backlog.json'));
     validateManifest(manifest);

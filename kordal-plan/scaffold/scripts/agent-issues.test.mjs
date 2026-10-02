@@ -101,6 +101,11 @@ test('claim and finish keep the status labels, the closed state and the pushed b
   assert.match(f.issue(1).body, /- \[x\] Works\n- \[x\] Fails safely/);
   assert.deepEqual({ state: f.issue(2).state, labels: f.issue(2).labels }, { state: 'open', labels: ['status:ready'] }, 'the dependant became ready');
   assert.equal(f.issues(['sync', '--check']).status, 0);
+  // The next MVP gets its own milestone; the finished task keeps the one that delivered it.
+  const manifest = f.manifest(); manifest.mvp = 2;
+  fs.writeFileSync(path.join(f.dir, 'docs/plans/backlog.json'), JSON.stringify(manifest));
+  assert.equal(f.issues(['sync']).status, 0);
+  assert.deepEqual([f.issue(1).milestone, f.issue(1).state, f.issue(2).milestone], [1, 'closed', 2]);
 });
 test('the check names every difference and changes nothing; sync repairs it and keeps other labels', t => {
   const f = fixture(t);

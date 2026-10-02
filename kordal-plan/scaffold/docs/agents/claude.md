@@ -16,4 +16,4 @@ node scripts/agent-local.mjs finish <ID>   # fast-forwards and pushes the integr
 
 Before `finish`, check every acceptance criterion against evidence you produced, and read your own diff as a reviewer would: contracts, migrations, failure paths, permissions and cross-component behaviour. Record deviations and follow-up work in Completion Notes.
 
-Do not push by hand, open a pull request or commit to the integration branch directly. When every task is on it, follow "MVP review" and "Owner acceptance" in the workflow; push only after the owner has accepted the MVP.
+Do not push by hand, open a pull request or commit to the integration branch directly. The MVP's last task is its acceptance task: follow "The acceptance task" in the workflow, and open the pull request only after the owner has accepted the MVP.

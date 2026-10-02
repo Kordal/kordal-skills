@@ -21,7 +21,7 @@ const input = () => ({ manifest, plans, scope: '# MVP 2: Reminders\n\n## Outcome
 const dataOf = html => JSON.parse(/<script id="data" type="application\/json">(.*)<\/script>/.exec(html)[1]);
 
 test('the graph has one node per unfinished task and one edge per dependency of the manifest', () => {
-  assert.equal(dependencyGraph(manifest, manifest.tasks.slice(1)), [
+  assert.equal(dependencyGraph(manifest.tasks.slice(1)), [
     'flowchart LR',
     '  CAP_002["CAP-002<br/>Say #quot;hello#quot;"]',
     '  CAP_001 --> CAP_002',
