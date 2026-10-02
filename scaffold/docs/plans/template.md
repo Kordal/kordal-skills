@@ -26,6 +26,10 @@ ADRs: none
 
 - [ ] <!-- criterion -->
 
+## Flow
+
+<!-- A Mermaid flowchart (a ```mermaid block) of the journey this task delivers, including its failure paths. For a task with no user-facing journey, write "None: <reason>". -->
+
 ## Scope
 
 <!-- What this task includes. -->

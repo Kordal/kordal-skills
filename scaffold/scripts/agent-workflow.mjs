@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const manifestPath = 'docs/plans/backlog.json';
 const phases = ['planned', 'active', 'completed'];
-const requiredSections = ['Goal', 'Context', 'Task Contract', 'Scope', 'Out of Scope', 'Affected Components', 'Acceptance Criteria', 'Implementation Steps', 'Tests', 'Risks', 'Evidence', 'Completion Notes'];
+const requiredSections = ['Goal', 'Context', 'Task Contract', 'Scope', 'Out of Scope', 'Affected Components', 'Acceptance Criteria', 'Flow', 'Implementation Steps', 'Tests', 'Risks', 'Evidence', 'Completion Notes'];
 const assert = (condition, message) => { if (!condition) throw new Error(message); };
 const planPath = (task, phase) => `docs/plans/${phase}/${task.id}-${task.slug}.md`;
 const readLocal = (file) => { try { return fs.readFileSync(path.join(root, file), 'utf8'); } catch { return null; } };

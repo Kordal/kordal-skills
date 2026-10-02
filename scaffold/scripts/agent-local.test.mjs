@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 // The real scripts/agent-local.mjs in a real Git repository: two tasks, the
 // second depending on the first, both planned on main and on the integration
 // branch mvp1. `make` is a fake that passes or fails as GATE_RESULT says.
-const sections = ['Goal', 'Context', 'Task Contract', 'Scope', 'Out of Scope', 'Affected Components', 'Acceptance Criteria', 'Implementation Steps', 'Tests', 'Risks', 'Evidence', 'Completion Notes'];
+const sections = ['Goal', 'Context', 'Task Contract', 'Scope', 'Out of Scope', 'Affected Components', 'Acceptance Criteria', 'Flow', 'Implementation Steps', 'Tests', 'Risks', 'Evidence', 'Completion Notes'];
 const tasks = [
   { id: 'CAP-001', title: 'Identity', slug: 'identity', depends_on: [], adrs: [] },
   { id: 'CAP-002', title: 'Freshness', slug: 'freshness', depends_on: ['CAP-001'], adrs: [] },

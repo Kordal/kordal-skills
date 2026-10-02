@@ -58,7 +58,7 @@ Done when each material uncertainty is resolved or assigned an explicit blocking
 
 ## 5. Prepare the delivery backlog
 
-Split the scope into complete, testable features. Each task includes its contracts, owning components, UI and tests where applicable. Use the [task template](../plans/template.md) for plans in `docs/plans/planned/`, with observable acceptance criteria, failure behavior, dependencies, affected components and evidence requirements.
+Split the scope into complete, testable features. Each task includes its contracts, owning components, UI and tests where applicable. Use the [task template](../plans/template.md) for plans in `docs/plans/planned/`, with observable acceptance criteria, failure behavior, dependencies, affected components and evidence requirements. Every plan has a "Flow" section: a Mermaid flowchart of the journey the task delivers, including its failure paths, or "None: <reason>" for a task with no user-facing journey.
 
 Map every MVP acceptance scenario to the task or tasks that deliver and verify it. Include the necessary authorization, migrations, operations, upgrade, backup/restore and final release acceptance work. The final acceptance task exercises the assembled user journey on the actual release artifacts. Keep real-source pilot evidence separate from fixture acceptance. The first task of the first MVP bootstraps the development platform: it gives `make lint`, `make test` and the gates their product stages.
 
@@ -78,7 +78,9 @@ When preparing the agreed delivery queue, map stable task IDs, plans, tracker is
 
 The plan is `docs/plans/planned/<id>-<slug>.md`. `issue` is a real tracker number or `null`; `external_blocker` says what blocks the task from outside and who can resolve it. Reuse unfinished tasks with their existing IDs and blockers. Preserve completed plans and their evidence. If tracker creation is outside the authorized work, report it as an outstanding handoff item; use real issue references when registering tasks.
 
-Done when every included capability has an owner task and a proof of completion, and the dependency graph has no cycles or hidden prerequisites.
+Add a "Task dependencies" section to `docs/product/mvp<N>.md` with a Mermaid graph of all the MVP's tasks: one node per task, one edge per `depends_on` entry of the manifest, and nothing else.
+
+Done when every included capability has an owner task and a proof of completion, every plan has its Flow, and the dependency graph in `mvp<N>.md` matches `depends_on` in the manifest, with no cycles or hidden prerequisites.
 
 ## 6. Check readiness and hand off
 

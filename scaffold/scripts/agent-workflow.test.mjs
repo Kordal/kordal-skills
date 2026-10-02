@@ -4,7 +4,7 @@ import { section, validateManifest } from './agent-workflow.mjs';
 
 // validateManifest against an in-memory repository: two tasks, the second
 // depending on the first and owning an ADR.
-const sections = ['Goal', 'Context', 'Task Contract', 'Scope', 'Out of Scope', 'Affected Components', 'Acceptance Criteria', 'Implementation Steps', 'Tests', 'Risks', 'Evidence', 'Completion Notes'];
+const sections = ['Goal', 'Context', 'Task Contract', 'Scope', 'Out of Scope', 'Affected Components', 'Acceptance Criteria', 'Flow', 'Implementation Steps', 'Tests', 'Risks', 'Evidence', 'Completion Notes'];
 const adr = 'docs/adr/001-storage.md';
 const body = (task, heading, done) => {
   if (heading === 'Task Contract') return `Issue: ${task.issue ? `#${task.issue}` : 'none'}\n\nDependencies: ${task.depends_on.join(', ') || 'none'}\n`;
