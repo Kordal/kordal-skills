@@ -8,6 +8,8 @@ Two Claude Code skills that plan and deliver a product with agents: `/kordal-pla
 git clone git@github.com:Kordal/kordal-skills.git ~/Development/kordal-skills
 ln -s ~/Development/kordal-skills/kordal-plan ~/.claude/skills/kordal-plan
 ln -s ~/Development/kordal-skills/kordal-build ~/.claude/skills/kordal-build
+mkdir -p ~/.claude/agents
+ln -s ~/Development/kordal-skills/agents/kordal-reviewer.md ~/.claude/agents/kordal-reviewer.md
 ```
 
 Needs `git`, `node`, `make` and, for the GitHub mirror, `gh` logged in. The skills load in Claude Code sessions started after the install.
@@ -49,7 +51,7 @@ Six stages; a stage closes only with evidence. The owner decides at the stages i
 Per task: claim, implement, gate, review, evidence, finish, report.
 
 - **Gate.** `make pr-check` on the task's commit; a runtime change after it needs the gate again.
-- **Review.** The diff on two axes, Standards and Spec, recorded in the plan. An unreviewed task cannot be finished.
+- **Review.** The diff on two axes, Standards and Spec, by the `kordal-reviewer` agent: another model than the one that wrote the code (Fable, high effort), read-only. Recorded in the plan; an unreviewed task cannot be finished.
 - **Evidence.** Screenshots of the running product in `docs/evidence/<ID>/`.
 - **Report.** What was added, screenshots, what was verified, how to try it, what is next; also posted on the task's issue.
 

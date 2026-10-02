@@ -25,10 +25,20 @@ Before starting a step of "Deliver one task", tell the owner in one line which t
 1. **Place.** Run `node scripts/agent-local.mjs next`. A `CLAIMED` task whose branch no other worktree has checked out (`git worktree list`) is resumed on its branch; otherwise claim the task and switch to `task/<id>`. Move the plan to `active/`.
 2. **Implement** the plan: its ADRs first, then every acceptance criterion including the failure behaviour, with the tests the plan names. Commit.
 3. **Gate.** `node scripts/agent-local.mjs gate`. Done when it records a pass for the commit.
-4. **Review.** Run the `code-review` skill on the diff since the integration branch: it reviews the workflow's two axes, Standards and Spec, in fresh subagents. Fix every confirmed finding; a runtime fix returns to step 3. Done when the plan's Review section records the reviewed commit and each finding with its resolution.
+4. **Review.** Run [the review](#the-review) on the diff since the integration branch, against the task's plan. Fix every confirmed finding; a runtime fix returns to step 3. Done when the plan's Review section records the reviewed commit, the reviewer and each finding with its resolution.
 5. **Evidence.** Start the product on the gated commit and take the screenshots the workflow requires, with the browser tool of this session or the project's own browser tests. Look at each screenshot before recording it: it shows the feature working, with real data. Fill the plan's Evidence and Completion Notes, tick each acceptance criterion you checked against evidence, move the plan to `completed/`, commit.
 6. **Finish.** `node scripts/agent-local.mjs finish <ID>`. Done when it prints that the task is on the integration branch and, with a GitHub mirror, that the branch was pushed and the issues synced. A warning that GitHub was not updated is repaired with `node scripts/agent-local.mjs publish` before the report.
 7. **Report.** Give the owner the status update of the workflow's "Report" section, and post it on the task's issue as that section says. Show the owner the screenshots themselves: send the files where the session can, link their paths otherwise.
+
+## The review
+
+The reviewer is another model than the one that wrote the code: the `kordal-reviewer` agent, which runs on Fable at high effort and only reads.
+
+Dispatch it twice in one message, once per axis, each in the foreground: "Axis: Standards" and "Axis: Spec". Give each the repository path, the exact diff command (`git diff <base>...HEAD`), and what to judge against: `AGENTS.md` and the task's ADRs for Standards; the plan's path, or `docs/product/milestone<N>.md` for a milestone review, for Spec.
+
+Keep the two reports apart, as the reviewer returned them. Check each finding against the code before acting on it: fix what you confirm, and record what you reject with the reason.
+
+Where the `kordal-reviewer` agent is missing or its dispatch fails, run the `code-review` skill on the same diff instead and record in the Review section that the session's own model reviewed.
 
 ## Work the queue
 
@@ -46,7 +56,7 @@ The milestone's acceptance task is yours, not a subagent's: when it is the task 
 
 Follow the workflow's "The acceptance task" section on the task's own branch:
 
-1. **Milestone review.** Run the `code-review` skill on the diff since main. Add each confirmed finding as a task, deliver it by "Deliver one task", merge the integration branch and review again. Done when the review of the current head has no open finding and `docs/product/milestone<N>-test.md` records it.
+1. **Milestone review.** Run [the review](#the-review) on the diff since main. Add each confirmed finding as a task, deliver it by "Deliver one task", merge the integration branch and review again. Done when the review of the current head has no open finding and `docs/product/milestone<N>-test.md` records it.
 2. **Owner acceptance.** Complete the test document, start the product, give the owner the checklist and how to reach the running product, and stop. The owner's test is a gate; the milestone waits there until the owner answers. Deliver every failure the owner reports as a task, then hand the updated checklist back.
 3. **Finish.** When the owner says the milestone passes, record it in the test document, run both gates, finish the task and tell the owner `/kordal-build ship` is next.
 

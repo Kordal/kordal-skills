@@ -58,7 +58,7 @@ Pending.
 
 ## Review
 
-<!-- Filled before the task is integrated: the reviewed commit, then every finding on the two axes (Standards, Spec) with what was done about it, or "No findings". -->
+<!-- Filled before the task is integrated: the reviewed commit and the reviewer, then every finding on the two axes (Standards, Spec) with what was done about it, or "No findings". -->
 
 Pending.
 
