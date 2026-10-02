@@ -22,5 +22,5 @@ jobs:
         with:
           node-version: '24'
       # No per-task pull-request contract: tasks are integrated locally and
-      # one pull request carries the MVP (docs/agents/workflow.md).
+      # one pull request carries the milestone (docs/agents/workflow.md).
       - run: make agent-check

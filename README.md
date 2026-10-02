@@ -16,29 +16,29 @@ Needs `git`, `node`, `make` and, for the GitHub mirror, `gh` logged in. The skil
 
 | Command | Does |
 | --- | --- |
-| `/kordal-plan` | Plans the next MVP. In a new folder it scaffolds the project first. Resumes interrupted planning |
+| `/kordal-plan` | Plans the next milestone. In a new folder it scaffolds the project first. Resumes interrupted planning |
 | `/kordal-plan <idea>` | The same, starting from the idea |
 | `/kordal-plan feature <idea>` | Plans a small addition: at most three tasks, no new architecture decision |
 | `/kordal-plan update` | Brings a project's scaffold up to date with this repository |
 | `/kordal-build` | Delivers the next ready task, or resumes the unfinished one |
 | `/kordal-build <ID>` | Delivers that task |
 | `/kordal-build all` | Delivers the whole queue, one fresh subagent per task |
-| `/kordal-build ship` | Opens the pull request of the accepted MVP or feature. The owner merges |
+| `/kordal-build ship` | Opens the pull request of the accepted milestone or feature. The owner merges |
 
-## Planning an MVP
+## Planning a milestone
 
 Six stages; a stage closes only with evidence. The owner decides at the stages in bold.
 
 | # | Stage | Output |
 | --- | --- | --- |
-| 1 | Baseline: what exists, what users need, what existing solutions do better (web search) | `docs/product/vision.md`, `mvp<N>-research.md` |
-| 2 | **One user outcome**: "A [user] can [job], demonstrated by [result]" | `docs/product/mvp<N>.md` |
-| 3 | **Journey and scope**: capabilities, exclusions, acceptance scenarios | `mvp<N>.md` completed |
+| 1 | Baseline: what exists, what users need, what existing solutions do better (web search) | `docs/product/vision.md`, `milestone<N>-research.md` |
+| 2 | **One user outcome**: "A [user] can [job], demonstrated by [result]" | `docs/product/milestone<N>.md` |
+| 3 | **Journey and scope**: capabilities, exclusions, acceptance scenarios | `milestone<N>.md` completed |
 | 4 | Uncertainties: research, prototypes, architecture decisions (**only if a finding changes the scope**) | Proposed ADRs in `docs/adr/` |
-| 5 | Backlog: one plan per task with acceptance criteria and a flow diagram | `docs/plans/planned/`, `backlog.json`, `mvp<N>-summary.html` |
-| 6 | Handoff: issues created, integration branch `mvp<N>`, structure checks | First ready task |
+| 5 | Backlog: one plan per task with acceptance criteria and a flow diagram | `docs/plans/planned/`, `backlog.json`, `milestone<N>-summary.html` |
+| 6 | Handoff: issues created, integration branch `milestone<N>`, structure checks | First ready task |
 
-`mvp<N>-summary.html` is a generated page for the owner: scope, task dependency graph, every task with its criteria and flow, and the decisions.
+`milestone<N>-summary.html` is a generated page for the owner: scope, task dependency graph, every task with its criteria and flow, and the decisions.
 
 ## Planning a feature
 
@@ -53,18 +53,18 @@ Per task: claim, implement, gate, review, evidence, finish, report.
 - **Evidence.** Screenshots of the running product in `docs/evidence/<ID>/`.
 - **Report.** What was added, screenshots, what was verified, how to try it, what is next; also posted on the task's issue.
 
-An MVP ends with its acceptance task: a review of the whole MVP, then a test list for the owner in `docs/product/mvp<N>-test.md`. Each failure the owner reports becomes a task. Only after the owner accepts does `/kordal-build ship` open the pull request.
+A milestone ends with its acceptance task: a review of the whole milestone, then a test list for the owner in `docs/product/milestone<N>-test.md`. Each failure the owner reports becomes a task. Only after the owner accepts does `/kordal-build ship` open the pull request.
 
 ## GitHub
 
 Optional, asked once when a project is scaffolded. With it:
 
-- one issue per task in the milestone `MVP <N>`, generated from the plan;
+- one issue per task in the GitHub milestone `Milestone <N>`, generated from the plan;
 - one status label per issue: `status:waiting`, `status:blocked`, `status:ready`, `status:in-progress`, `status:done`;
 - `claim` and `finish` push the integration branch and sync the issues; an issue closes when its task is integrated;
 - `node scripts/agent-issues.mjs sync --check` fails on any difference; `node scripts/agent-local.mjs publish` repairs it after working offline.
 
-Main receives one pull request per MVP or feature. A push of the integration branch starts no hosted check.
+Main receives one pull request per milestone or feature. A push of the integration branch starts no hosted check.
 
 ## What a project gets
 

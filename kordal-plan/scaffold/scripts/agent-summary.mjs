@@ -4,7 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { section, validateManifest } from './agent-workflow.mjs';
 
-// The implementation summary of the MVP being planned
+// The implementation summary of the milestone being planned
 // (docs/agents/planning.md, stage 5): one HTML page for the owner, generated
 // from the scope, the manifest, the unfinished tasks' plans and their ADRs.
 // It is a view, never a source: regenerate it, do not edit it. The page
@@ -36,8 +36,8 @@ export function dependencyGraph(unfinished) {
 export function buildSummary({ manifest, scope, plans, adrs, revision, date }) {
   const unfinished = manifest.tasks.filter(task => plans[task.id]);
   const data = {
-    mvp: manifest.mvp,
-    title: /^# (.+)$/m.exec(scope ?? '')?.[1] ?? `MVP ${manifest.mvp}`,
+    milestone: manifest.milestone,
+    title: /^# (.+)$/m.exec(scope ?? '')?.[1] ?? `Milestone ${manifest.milestone}`,
     repository: manifest.repository ?? null,
     integration: manifest.integration_branch,
     revision, date,
@@ -202,12 +202,12 @@ if (process.argv[1] && fs.realpathSync(process.argv[1]) === fileURLToPath(import
       if (text !== null) plans[task.id] = text;
     }
     const adrFiles = [...new Set(manifest.tasks.filter(task => plans[task.id]).flatMap(task => task.adrs))].sort();
-    const scopeFile = `docs/product/mvp${manifest.mvp}.md`;
+    const scopeFile = `docs/product/milestone${manifest.milestone}.md`;
     const scope = read(scopeFile);
     if (scope === null) throw new Error(`${scopeFile} is missing: the summary describes the agreed scope`);
     let revision = 'uncommitted';
     try { revision = execFileSync('git', ['rev-parse', '--short', 'HEAD'], { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); } catch { /* a repository without commits */ }
-    const out = `docs/product/mvp${manifest.mvp}-summary.html`;
+    const out = `docs/product/milestone${manifest.milestone}-summary.html`;
     fs.writeFileSync(path.join(root, out), buildSummary({ manifest, scope, plans, adrs: adrFiles.map(file => ({ file, text: read(file) })), revision, date: new Date().toISOString().slice(0, 10) }));
     console.log(`Wrote ${out}: ${Object.keys(plans).length} tasks, ${adrFiles.length} ADRs`);
   } catch (error) { console.error(`FAIL: ${error.message}`); process.exitCode = 1; }

@@ -19,7 +19,7 @@ function fixture() {
   ];
   const files = { [adr]: '# ADR-001: Storage\n\n- **Status:** Proposed\n- **Owning task:** CAP-002\n' };
   for (const task of tasks) files[`docs/plans/planned/${task.id}-${task.slug}.md`] = plan(task);
-  const manifest = { version: 1, mvp: 1, integration_branch: 'mvp1', repository: 'owner/product', tasks };
+  const manifest = { version: 1, milestone: 1, integration_branch: 'milestone1', repository: 'owner/product', tasks };
   return { manifest, tasks, files, check: () => validateManifest(manifest, file => files[file] ?? null) };
 }
 const complete = (f, task) => {
@@ -29,14 +29,14 @@ const complete = (f, task) => {
 
 test('a mapped backlog passes, and so does an empty one', () => {
   fixture().check();
-  validateManifest({ version: 1, mvp: 1, integration_branch: 'mvp1', tasks: [] }, () => null);
+  validateManifest({ version: 1, milestone: 1, integration_branch: 'milestone1', tasks: [] }, () => null);
 });
-test('the manifest names its MVP and integration branch', () => {
+test('the manifest names its milestone and integration branch', () => {
   const f = fixture();
   f.manifest.integration_branch = '';
   assert.throws(f.check, /names no integration_branch/);
-  f.manifest.integration_branch = 'mvp1'; f.manifest.mvp = undefined;
-  assert.throws(f.check, /names no mvp number/);
+  f.manifest.integration_branch = 'milestone1'; f.manifest.milestone = undefined;
+  assert.throws(f.check, /names no milestone number/);
 });
 test('task IDs, issues and dependencies are well formed and acyclic', () => {
   let f = fixture(); f.tasks[1].id = 'CAP-001';

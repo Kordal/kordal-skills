@@ -6,7 +6,7 @@ import { buildSummary, dependencyGraph } from './agent-summary.mjs';
 // ones, the second with a Flow and an ADR.
 const plan = (id, title, flow) => `# ${id}: ${title}\n\n## Goal\n\nDeliver ${title}.\n\n## Acceptance Criteria\n\n- [ ] Works\n\n## Flow\n\n${flow}\n\n## Scope\n\nText.\n`;
 const manifest = {
-  version: 1, mvp: 2, integration_branch: 'mvp2', repository: 'owner/product',
+  version: 1, milestone: 2, integration_branch: 'milestone2', repository: 'owner/product',
   tasks: [
     { id: 'CAP-001', title: 'Bootstrap', slug: 'bootstrap', issue: 1, depends_on: [], adrs: [] },
     { id: 'CAP-002', title: 'Say "hello"', slug: 'hello', issue: 2, depends_on: ['CAP-001'], adrs: [] },
@@ -17,7 +17,7 @@ const plans = {
   'CAP-002': plan('CAP-002', 'Say "hello"', 'None: tooling only.'),
   'CAP-003': plan('CAP-003', 'Reminders', '```mermaid\nflowchart TD\n  A --> B\n```'),
 };
-const input = () => ({ manifest, plans, scope: '# MVP 2: Reminders\n\n## Outcome\n\nA freelancer sends a reminder. </script><b>x</b>\n', adrs: [{ file: 'docs/adr/001-email.md', text: '# ADR-001: Email\n\n- **Status:** Proposed\n\n## Context\n\nText.\n' }], revision: 'abc1234', date: '2026-10-02' });
+const input = () => ({ manifest, plans, scope: '# Milestone 2: Reminders\n\n## Outcome\n\nA freelancer sends a reminder. </script><b>x</b>\n', adrs: [{ file: 'docs/adr/001-email.md', text: '# ADR-001: Email\n\n- **Status:** Proposed\n\n## Context\n\nText.\n' }], revision: 'abc1234', date: '2026-10-02' });
 const dataOf = html => JSON.parse(/<script id="data" type="application\/json">(.*)<\/script>/.exec(html)[1]);
 
 test('the graph has one node per unfinished task and one edge per dependency of the manifest', () => {
@@ -34,7 +34,7 @@ test('the graph has one node per unfinished task and one edge per dependency of 
 test('the summary carries the scope, the unfinished tasks with their sections, and their ADRs', () => {
   const html = buildSummary(input());
   const data = dataOf(html);
-  assert.match(html, /<title>MVP 2: Reminders: implementation summary<\/title>/);
+  assert.match(html, /<title>Milestone 2: Reminders: implementation summary<\/title>/);
   assert.deepEqual(data.tasks.map(task => task.id), ['CAP-002', 'CAP-003'], 'a task without a planned or active plan is finished');
   assert.equal(data.tasks[1].sections.Goal, 'Deliver Reminders.');
   assert.match(data.tasks[1].sections.Flow, /^```mermaid\nflowchart TD/);
@@ -42,7 +42,7 @@ test('the summary carries the scope, the unfinished tasks with their sections, a
   assert.deepEqual(data.tasks[1].adrs, ['001-email']);
   assert.deepEqual(data.adrs.map(adr => [adr.id, adr.title, adr.status]), [['001-email', 'ADR-001: Email', 'Proposed']]);
   assert.match(data.scope, /^\n## Outcome/);
-  assert.deepEqual([data.revision, data.date, data.repository, data.integration], ['abc1234', '2026-10-02', 'owner/product', 'mvp2']);
+  assert.deepEqual([data.revision, data.date, data.repository, data.integration], ['abc1234', '2026-10-02', 'owner/product', 'milestone2']);
 });
 test('content cannot end the data element', () => {
   const html = buildSummary(input());

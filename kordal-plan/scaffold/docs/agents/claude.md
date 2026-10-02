@@ -1,6 +1,6 @@
 # Claude: implementation
 
-Read [workflow.md](workflow.md), the task's plan and its ADRs. Delivery is local: no pull request until the whole MVP is done, and no reviewer signs off a task.
+Read [workflow.md](workflow.md), the task's plan and its ADRs. Delivery is local: no pull request until the whole milestone is done, and no reviewer signs off a task.
 
 ```bash
 node scripts/agent-local.mjs next          # what is ready, claimed, waiting
@@ -16,4 +16,4 @@ node scripts/agent-local.mjs finish <ID>   # fast-forwards and pushes the integr
 
 Before `finish`, check every acceptance criterion against evidence you produced, and read your own diff as a reviewer would: contracts, migrations, failure paths, permissions and cross-component behaviour. Record deviations and follow-up work in Completion Notes.
 
-Do not push by hand, open a pull request or commit to the integration branch directly. The MVP's last task is its acceptance task: follow "The acceptance task" in the workflow, and open the pull request only after the owner has accepted the MVP. A standalone feature carries its acceptance in its last task: "A standalone feature" in the workflow.
+Do not push by hand, open a pull request or commit to the integration branch directly. The milestone's last task is its acceptance task: follow "The acceptance task" in the workflow, and open the pull request only after the owner has accepted the milestone. A standalone feature carries its acceptance in its last task: "A standalone feature" in the workflow.

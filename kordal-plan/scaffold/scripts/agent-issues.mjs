@@ -10,7 +10,7 @@ import { stateOf } from './agent-local.mjs';
 // issues of the manifest's `repository` match it and never reads a decision
 // from them:
 //   - one issue per task, titled "<ID>: <title>", its body generated from
-//     the plan, in the milestone "MVP <n>";
+//     the plan, in the GitHub milestone "Milestone <n>";
 //   - exactly one status label, derived from the same state `next` shows;
 //   - closed when the task's completed plan is on the integration branch.
 // `sync` is idempotent: it changes only what differs. `sync --check` changes
@@ -80,7 +80,7 @@ function sync(manifest, check) {
   for (const [name, color] of Object.entries(labelColors)) {
     if (!labels.has(name)) fix(`label ${name} is missing`, () => gh(`${repo}/labels`, 'POST', { name, color }));
   }
-  const title = `MVP ${manifest.mvp}`;
+  const title = `Milestone ${manifest.milestone}`;
   let milestone = list(`${repo}/milestones?state=all`).find(m => m.title === title)?.number;
   if (!milestone) fix(`milestone ${title} is missing`, () => { milestone = gh(`${repo}/milestones`, 'POST', { title }).number; });
 
@@ -109,7 +109,7 @@ function sync(manifest, check) {
       body: issueBody(manifest, task, state, planText(manifest, task, state)),
       state: state === 'DONE' ? 'closed' : 'open',
       labels: [...issue.labels.map(l => l.name).filter(n => !n.startsWith('status:')), statusLabels[state]].sort(),
-      // A finished task stays in the milestone of the MVP that delivered it.
+      // A finished task keeps the GitHub milestone it was delivered in.
       milestone: state === 'DONE' && issue.milestone ? issue.milestone.number : milestone,
     };
     const patch = {};

@@ -8,9 +8,9 @@
 
 <!-- The few commitments that shape every later decision. -->
 
-## First MVP
+## First milestone
 
-<!-- One sentence naming what the first MVP covers, linked to mvp1.md once that exists. -->
+<!-- One sentence naming what the first milestone covers, linked to milestone1.md once that exists. -->
 
 ## Future direction
 

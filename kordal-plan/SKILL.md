@@ -1,11 +1,11 @@
 ---
 name: kordal-plan
-description: Plan the next MVP through the six-stage planning workflow, or a small feature through its short path; in a new project, scaffold the agent structure first.
+description: Plan the next milestone through the six-stage planning workflow, or a small feature through its short path; in a new project, scaffold the agent structure first.
 disable-model-invocation: true
-argument-hint: "[MVP number or outcome idea | feature <idea> | update]"
+argument-hint: "[milestone number or outcome idea | feature <idea> | update]"
 ---
 
-Plan the MVP named in `$ARGUMENTS`; with no argument, plan the one after the latest `docs/product/mvp<N>.md`, or MVP 1 when none exists.
+Plan the milestone named in `$ARGUMENTS`; with no argument, plan the one after the latest `docs/product/milestone<N>.md`, or Milestone 1 when none exists.
 
 The project's `docs/agents/planning.md` is the single source of truth for the stages, their artifacts and their "Done when" criteria. This skill adds only how to run it in a Claude session. Where the file is missing, [scaffold the project](#scaffold-a-new-project) first. Then read it in full.
 
@@ -22,7 +22,7 @@ The scaffold's placeholders are HTML comments naming the planning stage that fil
 
 ## Plan a feature
 
-When `$ARGUMENTS` starts with `feature`, plan the rest of it by the "Plan a feature" section of `docs/agents/planning.md` instead of the six stages. A project that has no agreed MVP yet plans its first MVP instead: say so.
+When `$ARGUMENTS` starts with `feature`, plan the rest of it by the "Plan a feature" section of `docs/agents/planning.md` instead of the six stages. A project that has no agreed milestone yet plans its first milestone instead: say so.
 
 - The fit check is a real gate. A feature over its limits ends the run with the limit it broke and the advice to run `/kordal-plan`; the owner alone may overrule that.
 - Two owner decisions, both with `AskUserQuestion`: the feature sentence at step 1, the plans at step 3. Everything else is yours.
@@ -41,7 +41,7 @@ When `$ARGUMENTS` is `update`, bring the project's scaffold up to date instead o
 
 Work one stage at a time, in order. A stage is closed when its "Done when" holds and you have told the owner so, quoting the evidence: the file written, the decision recorded, the check output. Open the next stage only then.
 
-Start by placing the session: the `Planning status` line of `docs/product/mvp<N>-research.md` names the last closed stage. Resume at the next one, reusing every decision the conversation and the drafts already hold. Where the line is missing, place the session from `docs/product/` and `docs/plans/backlog.json` and write the line. Update it each time a stage closes.
+Start by placing the session: the `Planning status` line of `docs/product/milestone<N>-research.md` names the last closed stage. Resume at the next one, reusing every decision the conversation and the drafts already hold. Where the line is missing, place the session from `docs/product/` and `docs/plans/backlog.json` and write the line. Update it each time a stage closes.
 
 ## Owner gates
 
@@ -60,10 +60,10 @@ Everything else is yours to resolve: routine engineering choices, task splits, d
 - **Stage 1, baseline**: `research`, for the survey of existing solutions and other evidence that lives outside the repository.
 - **Stage 3, scope**: `grilling`, on the draft scope before it goes to the owner; `prototype`, when a journey question needs something to click.
 - **Stage 4, uncertainties**: `prototype` for a bounded question; `domain-modeling` for each Proposed ADR.
-- **Stage 5, backlog**: `writing-for-agents`, since every task plan is read by the agent that implements it. Open the implementation summary in the owner's browser (`open docs/product/mvp<N>-summary.html`) and say what it shows in three lines.
+- **Stage 5, backlog**: `writing-for-agents`, since every task plan is read by the agent that implements it. Open the implementation summary in the owner's browser (`open docs/product/milestone<N>-summary.html`) and say what it shows in three lines.
 
 ## Planning stays beside delivery
 
-Planning writes documents: the research note, the scope draft, Proposed ADRs, plans in `docs/plans/planned/`. The active MVP's queue, claims, branches and manifest change only at stage 6, after that queue is finished or the owner hands it off.
+Planning writes documents: the research note, the scope draft, Proposed ADRs, plans in `docs/plans/planned/`. The active milestone's queue, claims, branches and manifest change only at stage 6, after that queue is finished or the owner hands it off.
 
 Finish with the stage 6 handoff: the first ready task, the remaining blockers with who resolves each, and the output of the three structure checks and `node scripts/agent-local.mjs next`. Delivery starts with `/kordal-build`.

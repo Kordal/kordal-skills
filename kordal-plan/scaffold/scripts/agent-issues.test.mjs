@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 
 // The real scripts in a real Git repository with a bare `origin`, and
 // agent-issues.fake-gh.mjs in place of gh: two documentation tasks, the
-// second depending on the first, planned on main and on mvp1.
+// second depending on the first, planned on main and on milestone1.
 const sections = ['Goal', 'Context', 'Task Contract', 'Scope', 'Out of Scope', 'Affected Components', 'Acceptance Criteria', 'Flow', 'Implementation Steps', 'Tests', 'Risks', 'Evidence', 'Review', 'Completion Notes'];
 const tasks = () => [
   { id: 'CAP-001', title: 'Identity', slug: 'identity', issue: null, depends_on: [], adrs: [] },
@@ -27,7 +27,7 @@ function fixture(t) {
   const git = (...args) => { const r = spawnSync('git', args, { cwd: dir, encoding: 'utf8' }); assert.equal(r.status, 0, r.stderr); return r.stdout.trim(); };
   const scripts = path.dirname(fileURLToPath(import.meta.url));
   for (const script of ['agent-local.mjs', 'agent-workflow.mjs', 'agent-scope.mjs', 'agent-issues.mjs']) write(`scripts/${script}`, fs.readFileSync(path.join(scripts, script), 'utf8'));
-  write('docs/plans/backlog.json', JSON.stringify({ version: 1, mvp: 1, integration_branch: 'mvp1', repository: 'owner/product', tasks: tasks() }));
+  write('docs/plans/backlog.json', JSON.stringify({ version: 1, milestone: 1, integration_branch: 'milestone1', repository: 'owner/product', tasks: tasks() }));
   for (const task of tasks()) write(`docs/plans/planned/${task.id}-${task.slug}.md`, plan(task));
   write('bin/gh', `#!/bin/sh\nexec "${process.execPath}" "${path.join(scripts, 'agent-issues.fake-gh.mjs')}" "$@"\n`, 0o755);
   write('.gitignore', 'bin/\n');
@@ -44,7 +44,7 @@ function fixture(t) {
   const edit = change => { const state = github(); change(state); fs.writeFileSync(path.join(dir, 'bin/github.json'), JSON.stringify(state)); };
   const manifest = () => JSON.parse(fs.readFileSync(path.join(dir, 'docs/plans/backlog.json'), 'utf8'));
   // Stage 6 of planning: issues, their numbers committed, the integration branch.
-  const plan6 = () => { assert.equal(run('agent-issues.mjs')(['sync']).status, 0); commit('issues'); git('branch', 'mvp1'); };
+  const plan6 = () => { assert.equal(run('agent-issues.mjs')(['sync']).status, 0); commit('issues'); git('branch', 'milestone1'); };
   // A documentation task delivered: claimed, its plan completed, finished.
   const deliver = (offline) => {
     assert.equal(run('agent-local.mjs')(['claim', 'CAP-001'], offline).status, 0);
@@ -62,7 +62,7 @@ test('sync creates the labels, the milestone and one issue per task, and records
   const first = f.issues(['sync']);
   assert.equal(first.status, 0, first.stderr);
   assert.deepEqual(f.github().labels.map(l => l.name).sort(), ['status:blocked', 'status:done', 'status:in-progress', 'status:ready', 'status:waiting']);
-  assert.deepEqual(f.github().milestones, [{ number: 1, title: 'MVP 1' }]);
+  assert.deepEqual(f.github().milestones, [{ number: 1, title: 'Milestone 1' }]);
   assert.deepEqual(f.manifest().tasks.map(task => task.issue), [1, 2]);
   assert.match(fs.readFileSync(path.join(f.dir, 'docs/plans/planned/CAP-002-freshness.md'), 'utf8'), /^Issue: #2$/m);
   assert.deepEqual({ ...f.issue(1), body: undefined }, { state: 'open', labels: ['status:ready'], milestone: 1, title: 'CAP-001: Identity', body: undefined });
@@ -91,18 +91,18 @@ test('claim and finish keep the status labels, the closed state and the pushed b
   f.plan6();
   assert.equal(f.local(['claim', 'CAP-001']).status, 0);
   assert.deepEqual(f.issue(1).labels, ['status:in-progress']);
-  assert.equal(f.git('rev-parse', 'refs/remotes/origin/mvp1'), f.git('rev-parse', 'mvp1'), 'the claim publishes the integration branch');
+  assert.equal(f.git('rev-parse', 'refs/remotes/origin/milestone1'), f.git('rev-parse', 'milestone1'), 'the claim publishes the integration branch');
   f.git('branch', '--delete', '--force', 'task/cap-001');
   const finished = f.deliver();
   assert.equal(finished.status, 0, finished.stderr);
-  assert.match(finished.stdout, /CAP-001 is on mvp1 at [a-f0-9]{40}\. Pushed mvp1; issues synced\./);
-  assert.equal(f.git('ls-remote', 'origin', 'refs/heads/mvp1').split(/\s/)[0], f.git('rev-parse', 'mvp1'));
+  assert.match(finished.stdout, /CAP-001 is on milestone1 at [a-f0-9]{40}\. Pushed milestone1; issues synced\./);
+  assert.equal(f.git('ls-remote', 'origin', 'refs/heads/milestone1').split(/\s/)[0], f.git('rev-parse', 'milestone1'));
   assert.deepEqual({ state: f.issue(1).state, labels: f.issue(1).labels }, { state: 'closed', labels: ['status:done'] });
   assert.match(f.issue(1).body, /- \[x\] Works\n- \[x\] Fails safely/);
   assert.deepEqual({ state: f.issue(2).state, labels: f.issue(2).labels }, { state: 'open', labels: ['status:ready'] }, 'the dependant became ready');
   assert.equal(f.issues(['sync', '--check']).status, 0);
-  // The next MVP gets its own milestone; the finished task keeps the one that delivered it.
-  const manifest = f.manifest(); manifest.mvp = 2;
+  // The next milestone gets its own GitHub milestone; the finished task keeps the one that delivered it.
+  const manifest = f.manifest(); manifest.milestone = 2;
   fs.writeFileSync(path.join(f.dir, 'docs/plans/backlog.json'), JSON.stringify(manifest));
   assert.equal(f.issues(['sync']).status, 0);
   assert.deepEqual([f.issue(1).milestone, f.issue(1).state, f.issue(2).milestone], [1, 'closed', 2]);
@@ -127,11 +127,11 @@ test('an unreachable GitHub does not stop the work; next says so until publish s
   const finished = f.deliver(true);
   assert.equal(finished.status, 0, finished.stderr);
   assert.match(finished.stderr, /WARN: GitHub was not updated \(issue sync failed\)\. Run: node scripts\/agent-local\.mjs publish/);
-  assert.match(finished.stdout, /CAP-001 is on mvp1 at [a-f0-9]{40}\. GitHub was not updated\./);
+  assert.match(finished.stdout, /CAP-001 is on milestone1 at [a-f0-9]{40}\. GitHub was not updated\./);
   assert.deepEqual(f.issue(1).labels, ['status:ready'], 'GitHub still shows the old state');
   assert.match(f.local(['next']).stdout, /^READY CAP-002: Freshness\nGitHub is out of sync\. Run: node scripts\/agent-local\.mjs publish\n$/);
   assert.equal(f.local(['publish'], true).status, 1);
-  assert.match(f.local(['publish']).stdout, /Pushed mvp1; issues synced\./);
+  assert.match(f.local(['publish']).stdout, /Pushed milestone1; issues synced\./);
   assert.equal(f.issue(1).state, 'closed');
   assert.equal(f.local(['next']).stdout, 'READY CAP-002: Freshness\n');
 });

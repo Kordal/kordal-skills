@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "mvp": 1,
-  "integration_branch": "mvp1",
+  "milestone": 1,
+  "integration_branch": "milestone1",
   "tasks": []
 }

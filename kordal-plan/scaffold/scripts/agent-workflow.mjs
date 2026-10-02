@@ -29,7 +29,7 @@ export function section(text, heading) {
 
 export function validateManifest(manifest, read = readLocal) {
   assert(manifest?.version === 1, 'Unsupported manifest version');
-  assert(Number.isInteger(manifest.mvp) && manifest.mvp > 0, 'backlog.json names no mvp number');
+  assert(Number.isInteger(manifest.milestone) && manifest.milestone > 0, 'backlog.json names no milestone number');
   assert(/^[a-z0-9][a-z0-9/-]*$/.test(manifest.integration_branch ?? ''), 'backlog.json names no integration_branch');
   assert(Array.isArray(manifest.tasks), 'backlog.json has no tasks list');
   // The GitHub repository whose issues mirror the tasks; optional.
