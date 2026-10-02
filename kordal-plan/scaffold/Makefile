@@ -14,7 +14,7 @@ help: ## Show available commands
 .PHONY: agent-check
 agent-check: ## Validate agent task contracts and run workflow gate tests (local Node.js)
 	node scripts/agent-workflow.mjs check
-	node --test scripts/agent-workflow.test.mjs scripts/agent-local.test.mjs scripts/agent-issues.test.mjs scripts/gate.test.mjs
+	node --test scripts/agent-workflow.test.mjs scripts/agent-local.test.mjs scripts/agent-issues.test.mjs scripts/agent-summary.test.mjs scripts/gate.test.mjs
 
 .PHONY: lint
 lint: ## Check the documentation links; the product's linters join this target

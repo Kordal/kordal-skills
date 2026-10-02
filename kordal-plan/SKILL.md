@@ -51,7 +51,7 @@ Everything else is yours to resolve: routine engineering choices, task splits, d
 - **Stage 1, baseline**: `research`, for the survey of existing solutions and other evidence that lives outside the repository.
 - **Stage 3, scope**: `grilling`, on the draft scope before it goes to the owner; `prototype`, when a journey question needs something to click.
 - **Stage 4, uncertainties**: `prototype` for a bounded question; `domain-modeling` for each Proposed ADR.
-- **Stage 5, backlog**: `writing-for-agents`, since every task plan is read by the agent that implements it.
+- **Stage 5, backlog**: `writing-for-agents`, since every task plan is read by the agent that implements it. Open the implementation summary in the owner's browser (`open docs/product/mvp<N>-summary.html`) and say what it shows in three lines.
 
 ## Planning stays beside delivery
 

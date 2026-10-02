@@ -80,7 +80,9 @@ The plan is `docs/plans/planned/<id>-<slug>.md`. Register a new task with `"issu
 
 Add a "Task dependencies" section to `docs/product/mvp<N>.md` with a Mermaid graph of all the MVP's tasks: one node per task, one edge per `depends_on` entry of the manifest, and nothing else.
 
-Done when every included capability has an owner task and a proof of completion, every plan has its Flow, and the dependency graph in `mvp<N>.md` matches `depends_on` in the manifest, with no cycles or hidden prerequisites.
+Then run `node scripts/agent-summary.mjs`. It writes `docs/product/mvp<N>-summary.html`, the implementation summary for the owner: the scope, the dependency graph drawn from the manifest, and every task with its goal, acceptance criteria and flow, followed by the ADRs. Open it for the owner. The page is a view of the plans: change a plan and regenerate, never edit the page. Regenerate it at stage 6, once the issues have their numbers.
+
+Done when every included capability has an owner task and a proof of completion, every plan has its Flow, the owner has the implementation summary, and the dependency graph in `mvp<N>.md` matches `depends_on` in the manifest, with no cycles or hidden prerequisites.
 
 ## 6. Check readiness and hand off
 
