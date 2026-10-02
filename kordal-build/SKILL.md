@@ -30,7 +30,7 @@ Before starting a step of "Deliver one task", tell the owner in one line which t
 2. **Implement** the plan: its ADRs first, then every acceptance criterion including the failure behaviour, with the tests the plan names. Commit.
 3. **Gate.** `node scripts/agent-local.mjs gate`. Done when it records a pass for the commit.
 4. **Review.** Run [the review](#the-review) on the diff since the integration branch, against the task's plan. Fix every confirmed finding; a runtime fix returns to step 3. Done when the plan's Review section records the reviewed commit, the reviewer and each finding with its resolution.
-5. **Evidence.** Fill the plan's Evidence and Completion Notes, tick each acceptance criterion you checked against evidence, move the plan to `completed/`, commit.
+5. **Evidence.** Start the product on the gated commit and walk the plan's Flow as a user would, with the browser tool of this session or the project's own browser tests: the journey and each failure path. Where neither is available, say in the Evidence that the feature was not exercised by hand. Fix what you find; a runtime fix returns to step 3. Then fill the plan's Evidence and Completion Notes, tick each acceptance criterion you checked against evidence, move the plan to `completed/`, commit.
 6. **Finish.** `node scripts/agent-local.mjs finish <ID>`. Done when it prints that the task is on the integration branch and, with a GitHub mirror, that the branch was pushed and the issues synced. A warning that GitHub was not updated is repaired with `node scripts/agent-local.mjs publish` before the report.
 7. **Report.** Give the owner the status update of the workflow's "Report" section, and post it on the task's issue as that section says.
 

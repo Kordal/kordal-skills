@@ -60,8 +60,9 @@ No independent reviewer follows you: the gate, the review and your own check of 
 
    It runs `make pr-check`. A failed gate records nothing.
 2. Review the task's diff against the integration branch with a fresh context, as a reviewer who did not write it, on two axes. **Standards:** does the change follow `AGENTS.md`, the ADRs and the conventions of the code around it? **Spec:** does it deliver the plan's acceptance criteria and failure behaviour, and nothing outside its scope? Fix every confirmed finding; a runtime fix needs the gate again. Record in the plan's Review section the reviewed commit, who reviewed (the agent and its model), and each finding with what was done about it, or "No findings". `make agent-check` rejects a completed plan whose Review is pending.
-3. Record the evidence in the plan and move it to `completed/`. Commits after the gate may change documentation only; a runtime change needs the gate again. [`scripts/agent-scope.mjs`](../../scripts/agent-scope.mjs) holds that rule.
-4. Integrate:
+3. Use what you built. For every change a user can see, start the product on the gated commit and walk the plan's Flow as a user would, in the browser or the client the product has: the journey and each failure path. A defect you find is fixed before the task goes on; a runtime fix needs the gate again. A task with nothing to see exercises its command or API instead.
+4. Record the evidence in the plan, including what you walked through and what you saw, and move it to `completed/`. Commits after the gate may change documentation only; a runtime change needs the gate again. [`scripts/agent-scope.mjs`](../../scripts/agent-scope.mjs) holds that rule.
+5. Integrate:
 
    ```bash
    node scripts/agent-local.mjs finish <ID>
