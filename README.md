@@ -38,7 +38,7 @@ A skill's pin holds for the turn that invokes it; the session's own model resume
 | `/kordal-improve <question>` | Investigates a question about the product or its code; returns evidenced findings and ranked proposals. Changes no code |
 | `/kordal-build` | Delivers the next ready task, or resumes the unfinished one |
 | `/kordal-build <ID>` | Delivers that task |
-| `/kordal-build-all` | Delivers the whole queue, one agent per task; up to three independent tasks in parallel, each in its own worktree |
+| `/kordal-build-all` | Delivers the whole queue, one agent per task; up to five independent tasks in parallel, each in its own worktree |
 | `/kordal-build-serial` | The same, one task at a time |
 | `/kordal-build-ship` | Opens the pull request of the accepted milestone or feature. The owner merges |
 

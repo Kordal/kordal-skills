@@ -37,16 +37,18 @@ When `$ARGUMENTS` starts with `feature`, plan the rest of it by the "Plan a feat
 
 ## Update a scaffolded project
 
-When `$ARGUMENTS` is `update` or `upgrade`, bring the project's scaffold up to date instead of planning. The update changes the tooling every task runs on, so it belongs between two milestones.
+When `$ARGUMENTS` is `update` or `upgrade`, bring the project's scaffold up to date instead of planning. The update changes the tooling every task runs on, so where it lands depends on what is in progress.
 
-1. **Place.** Work on main with a clean tree. Stop, and say what has to finish first, when `node scripts/agent-local.mjs next` lists a `CLAIMED` task or the integration branch holds work main lacks (`git merge-base --is-ancestor <integration branch> main` fails).
-2. **Migrate the names.** Where `docs/plans/backlog.json` still has `"mvp"`, run `node ${CLAUDE_SKILL_DIR}/migrate.mjs` in the project root. It renames the manifest key, the integration branch, the `docs/product/mvp<N>*` documents with their links, and on GitHub the branch and the milestone; it commits nothing. Commit its changes as their own commit.
+1. **Place.** Start from a clean tree and `git fetch`.
+   - **Between milestones** (the integration branch is contained in main and `next` lists no `CLAIMED` task): work on main.
+   - **During a milestone**: deliver the update as a task. Add `<prefix>-<next number>: Update the agent scaffold` by the workflow's "Add a task during delivery", with "None: tooling only" as its Flow, claim it, and do steps 3 to 7 on its branch. Tasks already in progress keep the old tooling until they merge the integration branch, which `finish` asks of them.
+2. **Migrate the names**, between milestones only: a project that still has `"mvp"` in its manifest is updated after its milestone merges; say so and stop. Where `docs/plans/backlog.json` still has `"mvp"`, run `node ${CLAUDE_SKILL_DIR}/migrate.mjs` in the project root. It renames the manifest key, the integration branch, the `docs/product/mvp<N>*` documents with their links, and on GitHub the branch and the milestone; it commits nothing. Commit its changes as their own commit.
 3. **Diff.** Run `bash ${CLAUDE_SKILL_DIR}/bootstrap.sh --diff`. It prints what changed in the scaffold since the version the project records, and every scaffold file the project lacks. A project with no recorded version gets a file-by-file comparison instead. Show the owner the list.
 4. **Apply** each scaffold change to the project's file, keeping the project's own content; copy the missing files.
 5. **Check the hosted workflows** as step 5 of "Scaffold a new project" says, where that has not been done.
 6. **Bring the open plans up to the template.** Every plan in `planned/` and `active/` gets each section the template now has and the plan lacks, written from the plan's own content: a Flow drawn from its acceptance criteria, not a placeholder. Completed plans stay as they are. Where the scope document lacks a section the planning workflow now asks for, add it with the owner.
 7. **Check.** Run `node scripts/agent-summary.mjs`, `make agent-check` and `bash tests/integration/check-docs.sh`. Done when the last two pass. Open the summary page in the owner's browser and say that every diagram renders there; in the Markdown files they are Mermaid source.
-8. **Record.** Run `bash ${CLAUDE_SKILL_DIR}/bootstrap.sh --stamp`, commit the update as its own commit and move the integration branch to it with `git branch -f <integration branch> main`. With a `repository`, push main and run `node scripts/agent-local.mjs publish`; done when `node scripts/agent-issues.mjs sync --check` passes.
+8. **Record.** Run `bash ${CLAUDE_SKILL_DIR}/bootstrap.sh --stamp`. During a milestone, commit on the task's branch and take the task through the workflow's gate, review and `finish`: the update is then on the integration branch, and reaches main with the milestone. Between milestones, commit the update as its own commit and move the integration branch to it with `git branch -f <integration branch> main`. With a `repository`, push main and run `node scripts/agent-local.mjs publish`; done when `node scripts/agent-issues.mjs sync --check` passes.
 
 ## Run the stages as gates
 

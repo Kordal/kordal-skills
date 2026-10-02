@@ -58,7 +58,7 @@ Open with the plan of the run, before the first task, in one short message:
 
 Then deliver the queue in rounds, until `next` lists no `READY` task and none this checkout left `CLAIMED`:
 
-1. **Pick the round**: the `READY` tasks, up to three, whose plans' Affected Components do not overlap. Tasks that touch the same files go into separate rounds, in manifest order. `all serial` picks one task per round.
+1. **Pick the round**: the `READY` tasks, up to five, whose plans' Affected Components do not overlap. Tasks that touch the same files go into separate rounds, in manifest order. `all serial` picks one task per round.
 2. **Announce it** to the owner: `Round 2 · CAP-003, CAP-005 in parallel · 4 of 6 tasks left`. The agents' steps stay inside their own contexts, so this line and the status updates at the end are what the owner sees of a round.
 3. **Prepare** a round of more than one task: `claim` each task here, one after the other, and give each its own checkout next to the project: `git worktree add ../<project>.worktrees/<id> task/<id>`. A round of one task needs neither; its agent claims the task itself in this checkout.
 4. **Dispatch** one `kordal-builder` agent per task (a generic subagent where that agent is missing), all in one message so that they run side by side, each in the foreground: "Read `${CLAUDE_SKILL_DIR}/SKILL.md` and deliver task `<ID>` by its section 'Deliver one task', in `<its checkout>`. The task is claimed on its branch there. End with the verbatim output of `finish` and the status update."
