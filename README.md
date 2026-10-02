@@ -24,7 +24,7 @@ Needs `git`, `node`, `make` and, for the GitHub mirror, `gh` logged in. The skil
 | Planning | Opus 5.5 | high | `kordal-plan` frontmatter |
 | Delivery | Opus 5.5 | medium | `kordal-build` frontmatter; the `kordal-builder` agent in `all` mode |
 | Review | Opus 5.5 | high | the `kordal-reviewer` agent |
-| Improvement questions | Opus 5.5 frames and observes; Fable investigates | high | `kordal-improve` frontmatter; the `kordal-investigator` agent |
+| Improvement questions | Opus 5.5 | high | `kordal-improve` frontmatter; the `kordal-investigator` agent |
 
 A skill's pin holds for the turn that invokes it; the session's own model resumes on the next prompt. The agents' pins always hold.
 
@@ -63,7 +63,7 @@ Six stages; a stage closes only with evidence. The owner decides at the stages i
 
 ## Asking an improvement question
 
-`/kordal-improve Check if we can make the chat experience more human-like`: Claude turns the question into checkable criteria you confirm, uses the running product and takes screenshots, and has another model read the code and search how others solve it. You get findings with evidence and at most seven ranked proposals, and give each a verdict: now, later or no. The report is saved under `docs/product/improvements/`; a "now" that fits a feature continues with `/kordal-plan feature`.
+`/kordal-improve Check if we can make the chat experience more human-like`: Claude turns the question into checkable criteria you confirm, uses the running product and takes screenshots, and has a separate agent read the code and search how others solve it. You get findings with evidence and at most seven ranked proposals, and give each a verdict: now, later or no. The report is saved under `docs/product/improvements/`; a "now" that fits a feature continues with `/kordal-plan feature`.
 
 ## Delivering
 

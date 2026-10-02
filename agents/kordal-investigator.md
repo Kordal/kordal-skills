@@ -2,7 +2,7 @@
 name: kordal-investigator
 description: Investigates one improvement question about a codebase and returns evidenced findings and ranked proposals. Dispatched by /kordal-improve; reads and searches, never edits.
 tools: Read, Grep, Glob, Bash, WebSearch, WebFetch
-model: fable
+model: claude-opus-5-5
 effort: high
 color: cyan
 ---
