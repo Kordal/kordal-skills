@@ -4,7 +4,7 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 
 // Renames a project that was scaffolded when the unit of planning was called
-// an MVP: run in the project root before `/kordal-plan update` applies the
+// an MVP: run in the project root before `/kordal-plan-update` applies the
 // scaffold's changes, whose scripts read "milestone".
 //
 //   - docs/plans/backlog.json: "mvp" becomes "milestone", the integration

@@ -35,7 +35,7 @@ Ask the owner for a verdict on each proposal: now, later, or no with the reason.
 
 Write `docs/product/improvements/<date>-<slug>.md`: the question, the criteria, the findings with their evidence, the proposals, and the owner's verdict on each. Then tell the owner what follows from the verdicts:
 
-- **Now, and it fits a feature**: give the exact command to type, `/kordal-plan feature <the proposal's sentence>`; proposals that belong together go into one command.
+- **Now, and it fits a feature**: give the exact command to type, `/kordal-plan-feature <the proposal's sentence>`; proposals that belong together go into one command.
 - **Now, and it needs a milestone or an architecture decision**: `/kordal-plan`, whose baseline reads this report.
 - **Later**: the report keeps it as a candidate for the next milestone.
 - **No**: the report keeps the reason, so the proposal is not made again.

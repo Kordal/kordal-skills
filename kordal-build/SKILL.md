@@ -73,7 +73,7 @@ Follow the workflow's "The acceptance task" section on the task's own branch:
 
 1. **Milestone review.** Run [the review](#the-review) on the diff since main. Add each confirmed finding as a task, deliver it by "Deliver one task", merge the integration branch and review again. Done when the review of the current head has no open finding and `docs/product/milestone<N>-test.md` records it.
 2. **Owner acceptance.** Complete the test document, start the product, give the owner the checklist and how to reach the running product, and stop. The owner's test is a gate; the milestone waits there until the owner answers. Deliver every failure the owner reports as a task, then hand the updated checklist back.
-3. **Finish.** When the owner says the milestone passes, record it in the test document, run both gates, finish the task and tell the owner `/kordal-build ship` is next.
+3. **Finish.** When the owner says the milestone passes, record it in the test document, run both gates, finish the task and tell the owner `/kordal-build-ship` is next.
 
 ## A standalone feature
 
@@ -81,7 +81,7 @@ A feature on its own `feature/<slug>` branch has no acceptance task. Its last ta
 
 ## Ship
 
-Ship only on `/kordal-build ship`: the pull request to main is the milestone's release, so it is opened on the owner's explicit command and in no other mode.
+Ship only on `/kordal-build-ship`: the pull request to main is the milestone's release, so it is opened on the owner's explicit command and in no other mode.
 
 1. Confirm the gate before the pull request: `next` lists nothing, and the test document on the integration branch records the owner's acceptance: `docs/product/milestone<N>-test.md`, with the milestone review, or `docs/product/feature-<slug>-test.md`.
 2. Follow the workflow's "Open the pull request when the work is done" section.

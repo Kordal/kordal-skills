@@ -6,13 +6,9 @@ Three Claude Code skills that plan and deliver a product with agents: `/kordal-p
 
 ```bash
 git clone git@github.com:Kordal/kordal-skills.git ~/Development/kordal-skills
-ln -s ~/Development/kordal-skills/kordal-plan ~/.claude/skills/kordal-plan
-ln -s ~/Development/kordal-skills/kordal-build ~/.claude/skills/kordal-build
-ln -s ~/Development/kordal-skills/kordal-improve ~/.claude/skills/kordal-improve
-mkdir -p ~/.claude/agents
-ln -s ~/Development/kordal-skills/agents/kordal-reviewer.md ~/.claude/agents/kordal-reviewer.md
-ln -s ~/Development/kordal-skills/agents/kordal-builder.md ~/.claude/agents/kordal-builder.md
-ln -s ~/Development/kordal-skills/agents/kordal-investigator.md ~/.claude/agents/kordal-investigator.md
+mkdir -p ~/.claude/skills ~/.claude/agents
+for skill in ~/Development/kordal-skills/kordal-*/; do ln -sfn "${skill%/}" ~/.claude/skills/; done
+for agent in ~/Development/kordal-skills/agents/*.md; do ln -sfn "$agent" ~/.claude/agents/; done
 ```
 
 Needs `git`, `node`, `make` and, for the GitHub mirror, `gh` logged in. The skills load in Claude Code sessions started after the install.
@@ -26,6 +22,8 @@ Needs `git`, `node`, `make` and, for the GitHub mirror, `gh` logged in. The skil
 | Review | Opus 5.5 | high | the `kordal-reviewer` agent |
 | Improvement questions | Opus 5.5 | high | `kordal-improve` frontmatter; the `kordal-investigator` agent |
 
+`/kordal-plan-feature`, `/kordal-plan-update`, `/kordal-build-all`, `/kordal-build-serial` and `/kordal-build-ship` are commands of their own that run the matching mode of `/kordal-plan` or `/kordal-build`, with the same model pins.
+
 A skill's pin holds for the turn that invokes it; the session's own model resumes on the next prompt. The agents' pins always hold.
 
 ## Commands
@@ -34,14 +32,14 @@ A skill's pin holds for the turn that invokes it; the session's own model resume
 | --- | --- |
 | `/kordal-plan` | Plans the next milestone. In a new folder it scaffolds the project first. Resumes interrupted planning |
 | `/kordal-plan <idea>` | The same, starting from the idea |
-| `/kordal-plan feature <idea>` | Plans a small addition: at most three tasks, no new architecture decision |
-| `/kordal-plan update` | Brings a project's scaffold up to date with this repository |
+| `/kordal-plan-feature <idea>` | Plans a small addition: at most three tasks, no new architecture decision |
+| `/kordal-plan-update` | Brings a project's scaffold up to date with this repository |
 | `/kordal-improve <question>` | Investigates a question about the product or its code; returns evidenced findings and ranked proposals. Changes no code |
 | `/kordal-build` | Delivers the next ready task, or resumes the unfinished one |
 | `/kordal-build <ID>` | Delivers that task |
-| `/kordal-build all` | Delivers the whole queue, one agent per task; up to three independent tasks in parallel, each in its own worktree |
-| `/kordal-build all serial` | The same, one task at a time |
-| `/kordal-build ship` | Opens the pull request of the accepted milestone or feature. The owner merges |
+| `/kordal-build-all` | Delivers the whole queue, one agent per task; up to three independent tasks in parallel, each in its own worktree |
+| `/kordal-build-serial` | The same, one task at a time |
+| `/kordal-build-ship` | Opens the pull request of the accepted milestone or feature. The owner merges |
 
 ## Planning a milestone
 
@@ -60,11 +58,11 @@ Six stages; a stage closes only with evidence. The owner decides at the stages i
 
 ## Planning a feature
 
-`/kordal-plan feature <idea>`: clarify the sentence, check that it fits (three tasks at most, no new ADR, not excluded), write the plans, get the owner's approval, register the tasks. A feature joins the work in progress when there is any; otherwise it gets its own branch `feature/<slug>` and its own pull request.
+`/kordal-plan-feature <idea>`: clarify the sentence, check that it fits (three tasks at most, no new ADR, not excluded), write the plans, get the owner's approval, register the tasks. A feature joins the work in progress when there is any; otherwise it gets its own branch `feature/<slug>` and its own pull request.
 
 ## Asking an improvement question
 
-`/kordal-improve Check if we can make the chat experience more human-like`: Claude turns the question into checkable criteria you confirm, uses the running product, and has a separate agent read the code and search how others solve it. You get findings with evidence and at most seven ranked proposals, and give each a verdict: now, later or no. The report is saved under `docs/product/improvements/`; a "now" that fits a feature continues with `/kordal-plan feature`.
+`/kordal-improve Check if we can make the chat experience more human-like`: Claude turns the question into checkable criteria you confirm, uses the running product, and has a separate agent read the code and search how others solve it. You get findings with evidence and at most seven ranked proposals, and give each a verdict: now, later or no. The report is saved under `docs/product/improvements/`; a "now" that fits a feature continues with `/kordal-plan-feature`.
 
 ## Delivering
 
@@ -75,7 +73,7 @@ Per task: claim, implement, gate, review, check, finish, report.
 - **Check.** Claude starts the product and walks the task's flow as a user would, including the failure paths; nothing is recorded but the ticked criteria.
 - **Report.** What was added, what was verified, how to try it, what is next; also posted on the task's issue.
 
-A milestone ends with its acceptance task: a review of the whole milestone, then a test list for the owner in `docs/product/milestone<N>-test.md`. Each failure the owner reports becomes a task. Only after the owner accepts does `/kordal-build ship` open the pull request.
+A milestone ends with its acceptance task: a review of the whole milestone, then a test list for the owner in `docs/product/milestone<N>-test.md`. Each failure the owner reports becomes a task. Only after the owner accepts does `/kordal-build-ship` open the pull request.
 
 ## GitHub
 
@@ -111,7 +109,7 @@ A new project has no product checks: `make test` fails until the first task adds
 
 ## Changing the scaffold
 
-Commit every change under `kordal-plan/scaffold/`. A project records the scaffold commit it was created from in `docs/agents/scaffold-version`, and `/kordal-plan update` diffs against it.
+Commit every change under `kordal-plan/scaffold/`. A project records the scaffold commit it was created from in `docs/agents/scaffold-version`, and `/kordal-plan-update` diffs against it.
 
 ```bash
 bash kordal-plan/bootstrap.sh <dir>          # copy the scaffold into a project
@@ -121,7 +119,7 @@ bash kordal-plan/bootstrap.sh --stamp <dir>  # record the current version
 
 Before committing, bootstrap a throwaway project and run `make agent-check` and `bash tests/integration/check-docs.sh` in it.
 
-`kordal-plan/migrate.mjs` renames a project scaffolded when the unit was called an MVP (`"mvp"`, `mvp<N>`, "MVP <N>") to milestones; `/kordal-plan update` runs it first. Its tests: `node --test kordal-plan/migrate.test.mjs`.
+`kordal-plan/migrate.mjs` renames a project scaffolded when the unit was called an MVP (`"mvp"`, `mvp<N>`, "MVP <N>") to milestones; `/kordal-plan-update` runs it first. Its tests: `node --test kordal-plan/migrate.test.mjs`.
 
 ## Status
 
