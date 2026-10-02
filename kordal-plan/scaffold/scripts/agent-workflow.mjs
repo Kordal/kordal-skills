@@ -32,13 +32,15 @@ export function validateManifest(manifest, read = readLocal) {
   assert(Number.isInteger(manifest.mvp) && manifest.mvp > 0, 'backlog.json names no mvp number');
   assert(/^[a-z0-9][a-z0-9/-]*$/.test(manifest.integration_branch ?? ''), 'backlog.json names no integration_branch');
   assert(Array.isArray(manifest.tasks), 'backlog.json has no tasks list');
+  // The GitHub repository whose issues mirror the tasks; optional.
+  assert(manifest.repository == null || /^[\w.-]+\/[\w.-]+$/.test(manifest.repository), 'Invalid repository; use owner/name');
   const ids = new Set(), issues = new Set();
   for (const task of manifest.tasks) {
     assert(/^[A-Z]+-\d{3}$/.test(task.id) && !ids.has(task.id), `Invalid/duplicate task ID: ${task.id}`);
     assert(typeof task.title === 'string' && task.title.trim(), `Missing title: ${task.id}`);
     assert(/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(task.slug), `Invalid plan slug: ${task.id}`);
-    // A tracker issue is optional; a recorded one is a real, unique number.
-    assert(task.issue == null || (Number.isInteger(task.issue) && task.issue > 0 && !issues.has(task.issue)), `Invalid/duplicate issue: ${task.id}`);
+    // scripts/agent-issues.mjs creates the issue; a recorded one is a real, unique number of the repository.
+    assert(task.issue == null || (manifest.repository && Number.isInteger(task.issue) && task.issue > 0 && !issues.has(task.issue)), `Invalid/duplicate issue: ${task.id}`);
     assert(Array.isArray(task.depends_on) && new Set(task.depends_on).size === task.depends_on.length, `Invalid dependencies: ${task.id}`);
     assert(Array.isArray(task.adrs), `Invalid ADR list: ${task.id}`);
     assert(task.external_blocker == null || (typeof task.external_blocker === 'string' && task.external_blocker.trim()), `Invalid external blocker: ${task.id}`);

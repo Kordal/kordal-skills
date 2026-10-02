@@ -2,7 +2,7 @@
 
 For a new MVP or a change to its agreed outcome or scope, start with [the planning workflow](planning.md).
 
-Delivery is **local**: develop, verify and integrate on the local machine, and push once, when the whole MVP is done. A task needs no pull request and no reviewer's approval.
+Delivery is **local**: develop, verify and integrate on the local machine. A task needs no pull request and no reviewer's approval; main receives one pull request, when the whole MVP is done.
 
 ## Sources of truth
 
@@ -16,11 +16,18 @@ Delivery is **local**: develop, verify and integrate on the local machine, and p
 
 The local repository holds the state, and every worktree of it sees the same:
 
-- **Integration branch**, named by `integration_branch` in the manifest (`mvp<N>`). Finished tasks accumulate here. It starts from main and is what the remote receives at the end. Nobody commits to it directly and no worktree checks it out.
+- **Integration branch**, named by `integration_branch` in the manifest (`mvp<N>`). Finished tasks accumulate here. It starts from main and becomes the MVP's pull request. Nobody commits to it directly and no worktree checks it out.
 - **Done:** the task's completed plan is on the integration branch.
 - **Claimed:** the branch `task/<id>` exists (`task/cap-001`).
 
-A tracker issue, where a task has one, describes the task; its labels are not updated during local delivery and prove nothing about progress. Task identifiers are not issue numbers.
+## GitHub mirror
+
+A manifest that names a `repository` has a mirror of this state on GitHub; a manifest without one is delivered without GitHub, and the rest of this section does not apply. The repository stays the source of truth: change the plan, never the issue.
+
+- **Integration branch:** `claim` and `finish` push it, so GitHub holds every finished task. A push of this branch starts no hosted check.
+- **Issues:** one per task, in the milestone `MVP <N>`, its body generated from the plan. Each carries one status label, the state `next` shows: `status:waiting`, `status:blocked`, `status:ready`, `status:in-progress`, `status:done`. An issue closes when its task is on the integration branch.
+
+[`scripts/agent-issues.mjs`](../../scripts/agent-issues.mjs) keeps the mirror: `claim` and `finish` run its `sync`, which changes only what differs. `node scripts/agent-issues.mjs sync --check` changes nothing and fails on any difference. When GitHub cannot be reached the local result stands, `next` reports that GitHub is out of sync, and `node scripts/agent-local.mjs publish` repairs it. Task identifiers are not issue numbers.
 
 ## Select and claim
 
@@ -59,7 +66,7 @@ No independent reviewer follows you: the gate and your own check of every accept
    node scripts/agent-local.mjs finish <ID>
    ```
 
-   It refuses a dirty or foreign branch, a missing completed plan, a second task's plan in the same branch, and a runtime change without a covering gate. If the integration branch moved meanwhile, merge it into your branch and gate again. Then it fast-forwards the integration branch to your commit. Nothing is pushed.
+   It refuses a dirty or foreign branch, a missing completed plan, a second task's plan in the same branch, and a runtime change without a covering gate. If the integration branch moved meanwhile, merge it into your branch and gate again. Then it fast-forwards the integration branch to your commit and updates the GitHub mirror.
 
 A documentation task needs no gate.
 
@@ -72,6 +79,8 @@ After every `finish`, give the owner a status update, then select the next task 
 - **Verified:** the acceptance criteria checked against evidence, and the gate result with its commit.
 - **Try it:** the two or three steps by which the owner sees it working.
 - **Next:** the output of `node scripts/agent-local.mjs next`, and any follow-up recorded in Completion Notes.
+
+With a GitHub mirror, post the same update on the task's issue: write it to a file outside the repository and run `node scripts/agent-issues.mjs comment <ID> <file>`. Embed each screenshot by its URL at the pushed commit: `![caption](https://github.com/<repository>/blob/<commit>/docs/evidence/<ID>/<file>.png?raw=true)`.
 
 ## Gates
 
@@ -100,8 +109,9 @@ Start the product, hand the owner the list and stop. Each failure the owner repo
 When the owner has accepted the MVP:
 
 1. Run `make pr-check` and `make premerge-check` on the integration branch's head.
-2. Push the integration branch and open one pull request to main with Summary, Evidence and Merge Danger.
-3. The hosted check `Agent structure` runs `make agent-check` on it. A failed, missing, cancelled or skipped check is not a pass.
-4. Merge when the checks are green, then close the task issues, where there are any, with a link to the merge.
+2. Run `node scripts/agent-issues.mjs sync --check`: the mirror matches before the pull request names its issues.
+3. Push the integration branch and open one pull request to main with Summary, Evidence and Merge Danger; the Summary lists every task with its issue.
+4. The hosted check `Agent structure` runs `make agent-check` on it. A failed, missing, cancelled or skipped check is not a pass.
+5. Report the pull request and the state of its checks to the owner, who merges it.
 
-Without a remote, the owner decides how main receives the integration branch.
+Without a GitHub mirror, the owner decides how main receives the integration branch.

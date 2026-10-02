@@ -43,9 +43,9 @@ Introduce another technology only when the active task requires it, with an ADR.
 
 **Before selecting, implementing, resuming or integrating work, read [the agent workflow](docs/agents/workflow.md).** The [backlog manifest](docs/plans/backlog.json) maps task IDs to plans, dependencies and ADRs, and names the integration branch.
 
-An MVP is delivered locally: **no push, no pull request and no reviewer's approval per task.** The remote receives the integration branch once, when the whole MVP is done.
+An MVP is delivered locally: **no pull request and no reviewer's approval per task.** Main receives one pull request, when the whole MVP is done, and the owner merges it.
 
-One task, one branch. `node scripts/agent-local.mjs next` lists the queue; `claim <ID>` creates `task/<id>` from the integration branch; `gate` runs `make pr-check` and records the pass; `finish <ID>` puts the task on the integration branch. Do not push, and do not commit to the integration branch directly. Read your [role instructions](docs/agents/claude.md) before acting.
+One task, one branch. `node scripts/agent-local.mjs next` lists the queue; `claim <ID>` creates `task/<id>` from the integration branch; `gate` runs `make pr-check` and records the pass; `finish <ID>` puts the task on the integration branch. Where the manifest names a GitHub repository, `claim` and `finish` also push the integration branch and update the task's issue; that is the only push. Do not commit to the integration branch directly. Read your [role instructions](docs/agents/claude.md) before acting.
 
 ## Repository map
 
@@ -56,7 +56,7 @@ One task, one branch. `node scripts/agent-local.mjs next` lists the queue; `clai
 | `docs/plans/` | Backlog manifest and task plans (`planned/`, `active/`, `completed/`) |
 | `docs/agents/` | Planning workflow, delivery workflow, role instructions |
 | `docs/evidence/` | Screenshots that prove completed tasks, one directory per task |
-| `scripts/` | Agent delivery tooling and the gate runner |
+| `scripts/` | Agent delivery tooling, the GitHub issue mirror and the gate runner |
 | `tests/` | Cross-component checks |
 
 <!-- Add the product's directories as tasks create them. -->

@@ -11,11 +11,12 @@ The project's `docs/agents/planning.md` is the single source of truth for the st
 
 ## Scaffold a new project
 
-The scaffold is the agent structure this workflow runs on: `AGENTS.md`, `CLAUDE.md`, `docs/agents/` (planning, delivery, role instructions), `docs/plans/` (manifest, template, `planned/`, `active/`, `completed/`), `docs/adr/`, `docs/evidence/`, `docs/product/vision.md`, the delivery scripts with their tests, the gate runner, the documentation check, the Makefile gates and the hosted structure check.
+The scaffold is the agent structure this workflow runs on: `AGENTS.md`, `CLAUDE.md`, `docs/agents/` (planning, delivery, role instructions), `docs/plans/` (manifest, template, `planned/`, `active/`, `completed/`), `docs/adr/`, `docs/evidence/`, `docs/product/vision.md`, the delivery scripts and the GitHub issue mirror with their tests, the gate runner, the documentation check, the Makefile gates and the hosted structure check.
 
 1. Run `bash ${CLAUDE_SKILL_DIR}/bootstrap.sh` in the project root (`bootstrap.sh` sits beside this file). It initializes Git when needed, reports every file as `created` or `kept`, and records the scaffold version in `docs/agents/scaffold-version`.
 2. Merge each `kept` file by hand with its counterpart in `${CLAUDE_SKILL_DIR}/scaffold/`: an existing Makefile gains the scaffold's variables and targets, an existing `AGENTS.md` gains its delivery-workflow section and repository map.
 3. Run `make agent-check` and `bash tests/integration/check-docs.sh`. Done when both pass; then commit the scaffold on main as its own commit and show the owner the bootstrap report.
+4. A project without an `origin` remote: ask the owner once, with `AskUserQuestion`, whether to create a private GitHub repository for it, recommending yes. On yes, run `gh repo create <folder name> --private --source . --remote origin --push`, set `"repository": "<owner>/<name>"` in `docs/plans/backlog.json` and commit. A project that already has a GitHub `origin` gets that `repository` without the question. On no, the manifest stays without `repository` and the project is delivered without GitHub.
 
 The scaffold's placeholders are HTML comments naming the planning stage that fills them. Replace each comment at that stage, so `AGENTS.md` and `vision.md` carry no placeholder at the stage 6 handoff.
 

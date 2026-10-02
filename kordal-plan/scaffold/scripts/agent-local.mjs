@@ -6,11 +6,13 @@ import { validateManifest } from './agent-workflow.mjs';
 import { needsGate } from './agent-scope.mjs';
 
 // Local delivery (docs/agents/workflow.md): tasks are claimed, gated and
-// integrated in the local repository; nothing here talks to GitHub. State
-// lives in Git, which every worktree of the repository shares:
+// integrated in the local repository. State lives in Git, which every
+// worktree of the repository shares:
 //   - done:    the task's completed plan is on the integration branch;
 //   - claimed: the branch task/<id> exists;
 //   - gated:   <git dir>/agent-gates/<commit>.<gate> records a passed gate.
+// A manifest that names a GitHub repository gets a mirror of that state:
+// `claim` and `finish` push the integration branch and sync the issues.
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const gateNames = ['pr-check', 'premerge-check'];
 const git = (...args) => execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
@@ -26,7 +28,7 @@ function load() {
   assert(tryGit('rev-parse', '--verify', '--quiet', `refs/heads/${manifest.integration_branch}`), `The integration branch ${manifest.integration_branch} does not exist; create it from main`);
   return manifest;
 }
-function stateOf(manifest, task) {
+export function stateOf(manifest, task) {
   const done = t => tryGit('cat-file', '-e', `${manifest.integration_branch}:${planPath(t, 'completed')}`) !== null;
   if (done(task)) return { state: 'DONE' };
   if (tryGit('rev-parse', '--verify', '--quiet', `refs/heads/${taskBranch(task)}`)) return { state: 'CLAIMED', detail: taskBranch(task) };
@@ -39,17 +41,38 @@ function taskById(manifest, id) {
   assert(task, `Unknown task ${id ?? ''}; use an ID of backlog.json`);
   return task;
 }
+// The GitHub mirror: the integration branch and the issues. A failure leaves
+// the local result standing and a marker that `next` reports until a later
+// publish succeeds. Returns null when the manifest names no repository.
+const syncPending = () => path.join(path.resolve(root, git('rev-parse', '--git-common-dir')), 'agent-sync-pending');
+function publish(manifest) {
+  if (!manifest.repository) return null;
+  const branch = manifest.integration_branch;
+  const pushed = tryGit('push', '--quiet', 'origin', `${branch}:${branch}`) !== null;
+  const synced = spawnSync(process.execPath, [path.join(root, 'scripts/agent-issues.mjs'), 'sync'], { cwd: root, stdio: 'inherit' }).status === 0;
+  if (pushed && synced) { fs.rmSync(syncPending(), { force: true }); return true; }
+  fs.writeFileSync(syncPending(), `${new Date().toISOString()}\n`);
+  console.error(`WARN: GitHub was not updated (${[!pushed && `push of ${branch}`, !synced && 'issue sync'].filter(Boolean).join(', ')} failed). Run: node scripts/agent-local.mjs publish`);
+  return false;
+}
 const runtimeChange = (from, to) => needsGate(git('diff', '--name-only', from, to).split('\n').filter(Boolean));
 
 function main() {
   const [command = 'next', argument] = process.argv.slice(2);
-  assert(['next', 'claim', 'gate', 'finish'].includes(command), 'Usage: agent-local.mjs next|claim <ID>|gate [pr-check|premerge-check]|finish <ID>');
+  assert(['next', 'claim', 'gate', 'finish', 'publish'].includes(command), 'Usage: agent-local.mjs next|claim <ID>|gate [pr-check|premerge-check]|finish <ID>|publish');
   const manifest = load(), integration = manifest.integration_branch;
   if (command === 'next') {
     for (const task of manifest.tasks) {
       const { state, detail } = stateOf(manifest, task);
       if (state !== 'DONE') console.log(`${state} ${task.id}: ${detail}`);
     }
+    if (fs.existsSync(syncPending())) console.log('GitHub is out of sync. Run: node scripts/agent-local.mjs publish');
+    return;
+  }
+  if (command === 'publish') {
+    const result = publish(manifest);
+    assert(result !== false, 'GitHub is still out of sync');
+    console.log(result ? `Pushed ${integration}; issues synced.` : 'backlog.json names no repository: nothing to publish.');
     return;
   }
   if (command === 'claim') {
@@ -58,6 +81,7 @@ function main() {
     // Creating the branch is the claim: Git refuses a second one.
     assert(tryGit('branch', taskBranch(task), integration) !== null, `${task.id} was claimed a moment ago: ${taskBranch(task)} exists`);
     console.log(`Claimed ${task.id} on ${taskBranch(task)} (from ${integration}). Work there: git switch ${taskBranch(task)}`);
+    publish(manifest);
     return;
   }
   if (command === 'gate') {
@@ -92,7 +116,8 @@ function main() {
   assert(!git('worktree', 'list', '--porcelain').split('\n').includes(`branch refs/heads/${integration}`), `${integration} is checked out in a worktree; switch that worktree to another branch`);
   // Fast-forward, and only from the revision that was verified above.
   assert(tryGit('update-ref', `refs/heads/${integration}`, head, base) !== null, `${integration} moved during verification; rerun`);
-  console.log(`${task.id} is on ${integration} at ${head}. Nothing was pushed.`);
+  const published = publish(manifest);
+  console.log(`${task.id} is on ${integration} at ${head}. ${published === null ? 'Nothing was pushed.' : published ? `Pushed ${integration}; issues synced.` : 'GitHub was not updated.'}`);
 }
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try { main(); } catch (error) { console.error(`FAIL: ${error.message}`); process.exitCode = 1; }

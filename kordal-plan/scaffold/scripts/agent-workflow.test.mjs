@@ -19,7 +19,7 @@ function fixture() {
   ];
   const files = { [adr]: '# ADR-001: Storage\n\n- **Status:** Proposed\n- **Owning task:** CAP-002\n' };
   for (const task of tasks) files[`docs/plans/planned/${task.id}-${task.slug}.md`] = plan(task);
-  const manifest = { version: 1, mvp: 1, integration_branch: 'mvp1', tasks };
+  const manifest = { version: 1, mvp: 1, integration_branch: 'mvp1', repository: 'owner/product', tasks };
   return { manifest, tasks, files, check: () => validateManifest(manifest, file => files[file] ?? null) };
 }
 const complete = (f, task) => {
@@ -43,6 +43,10 @@ test('task IDs, issues and dependencies are well formed and acyclic', () => {
   assert.throws(f.check, /Invalid\/duplicate task ID: CAP-001/);
   f = fixture(); f.tasks[0].issue = 7; f.files['docs/plans/planned/CAP-001-identity.md'] = plan(f.tasks[0]);
   assert.throws(f.check, /Invalid\/duplicate issue: CAP-002/);
+  f = fixture(); f.manifest.repository = undefined;
+  assert.throws(f.check, /Invalid\/duplicate issue: CAP-002/, 'an issue needs a repository');
+  f = fixture(); f.manifest.repository = 'product';
+  assert.throws(f.check, /Invalid repository/);
   f = fixture(); f.tasks[1].depends_on = ['CAP-009']; f.files['docs/plans/planned/CAP-002-freshness.md'] = plan(f.tasks[1]);
   assert.throws(f.check, /Unknown dependency CAP-009/);
   f = fixture(); f.tasks[0].depends_on = ['CAP-002']; f.files['docs/plans/planned/CAP-001-identity.md'] = plan(f.tasks[0]);

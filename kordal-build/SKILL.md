@@ -12,7 +12,7 @@ Deliver the tasks `/kordal-plan` prepared. `$ARGUMENTS` picks the mode:
 | empty | [Deliver one task](#deliver-one-task): the claimed task this checkout left unfinished, else the first `READY` one |
 | a task ID | [Deliver one task](#deliver-one-task): that one |
 | `all` | [Work the queue](#work-the-queue) |
-| `ship` | [Ship](#ship) |
+| `ship` | [Ship](#ship): open the MVP's pull request |
 
 The project's `docs/agents/workflow.md` is the single source of truth for claiming, gates, evidence, the status update, owner acceptance and the push. Read it in full now, with `AGENTS.md` and `docs/agents/claude.md`. This skill adds only how to run it in a Claude session. A project without that file is planned first: tell the owner to run `/kordal-plan`.
 
@@ -23,8 +23,8 @@ The project's `docs/agents/workflow.md` is the single source of truth for claimi
 3. **Gate.** `node scripts/agent-local.mjs gate`. Done when it records a pass for the commit.
 4. **Review.** Run the `code-review` skill on the diff since the integration branch, on both axes: Standards and Spec. Fix every confirmed finding; a runtime fix returns to step 3.
 5. **Evidence.** Start the product on the gated commit and take the screenshots the workflow requires, with the browser tool of this session or the project's own browser tests. Look at each screenshot before recording it: it shows the feature working, with real data. Fill the plan's Evidence and Completion Notes, tick each acceptance criterion you checked against evidence, move the plan to `completed/`, commit.
-6. **Finish.** `node scripts/agent-local.mjs finish <ID>`. Done when it prints that the task is on the integration branch.
-7. **Report.** Give the owner the status update of the workflow's "Report" section. Show the screenshots themselves: send the files where the session can, link their paths otherwise.
+6. **Finish.** `node scripts/agent-local.mjs finish <ID>`. Done when it prints that the task is on the integration branch and, with a GitHub mirror, that the branch was pushed and the issues synced. A warning that GitHub was not updated is repaired with `node scripts/agent-local.mjs publish` before the report.
+7. **Report.** Give the owner the status update of the workflow's "Report" section, and post it on the task's issue as that section says. Show the owner the screenshots themselves: send the files where the session can, link their paths otherwise.
 
 ## Work the queue
 
@@ -45,11 +45,11 @@ Deliver every failure the owner reports as a task, then hand the updated checkli
 
 ## Ship
 
-Ship only on `/kordal-build ship`: the push is public, so it happens on the owner's explicit command and in no other mode.
+Ship only on `/kordal-build ship`: the pull request to main is the MVP's release, so it is opened on the owner's explicit command and in no other mode.
 
 1. Confirm the gate before the push: `next` lists nothing, and `docs/product/mvp<N>-test.md` records the owner's acceptance of the current head of the integration branch. Commits after the accepted one go back to the owner first.
 2. Follow the workflow's "Push when the MVP is done" section.
-3. Report the pull request's URL and the state of its checks.
+3. Report the pull request's URL and the state of its checks, and stop: the owner merges.
 
 ## Stop and ask
 

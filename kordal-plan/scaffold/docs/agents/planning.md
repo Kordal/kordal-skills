@@ -76,7 +76,7 @@ When preparing the agreed delivery queue, map stable task IDs, plans, tracker is
 }
 ```
 
-The plan is `docs/plans/planned/<id>-<slug>.md`. `issue` is a real tracker number or `null`; `external_blocker` says what blocks the task from outside and who can resolve it. Reuse unfinished tasks with their existing IDs and blockers. Preserve completed plans and their evidence. If tracker creation is outside the authorized work, report it as an outstanding handoff item; use real issue references when registering tasks.
+The plan is `docs/plans/planned/<id>-<slug>.md`. Register a new task with `"issue": null`: stage 6 creates the issues and records their numbers. `external_blocker` says what blocks the task from outside and who can resolve it. Reuse unfinished tasks with their existing IDs, issues and blockers. Preserve completed plans and their evidence.
 
 Add a "Task dependencies" section to `docs/product/mvp<N>.md` with a Mermaid graph of all the MVP's tasks: one node per task, one edge per `depends_on` entry of the manifest, and nothing else.
 
@@ -87,10 +87,12 @@ Done when every included capability has an owner task and a proof of completion,
 Before switching delivery to the next MVP:
 
 - Record the agreed scope and exact starting revision; account for unfinished work from the previous MVP.
-- Commit the planning documents on main and create the integration branch `mvp<N>` from it. Update the manifest's `mvp` and `integration_branch` together with the delivery instructions: the product scope and the repository map of [AGENTS.md](../../AGENTS.md). Coordinate this transition after the active queue is finished or explicitly handed off; preserve its claims and branches.
+- Update the manifest's `mvp` and `integration_branch` together with the delivery instructions: the product scope and the repository map of [AGENTS.md](../../AGENTS.md). Coordinate this transition after the active queue is finished or explicitly handed off; preserve its claims and branches.
+- Commit the planning documents on main. Where the manifest names a `repository`, run `node scripts/agent-issues.mjs sync`: it creates the milestone, the status labels and one issue per task, and writes the issue numbers into the manifest and the plans. Commit those numbers.
+- Create the integration branch `mvp<N>` from main. With a `repository`, push main and run `node scripts/agent-local.mjs publish`, which pushes the integration branch and gives every issue its status.
 - Check every MVP acceptance scenario against the task mapping, including failure and release scenarios.
 - Ensure every unresolved blocker is visible and independent tasks remain selectable. Defer a release prerequisite only through an explicit scope decision, preserving the uncompleted work.
 - Run `make agent-check`, `bash tests/integration/check-docs.sh` and `git diff --check` after preparing the queue. These validate structure, not product acceptance or the value of the chosen scope.
-- Run `node scripts/agent-local.mjs next` in the delivery checkout and confirm that readiness matches the intended dependencies.
+- Run `node scripts/agent-local.mjs next` in the delivery checkout and confirm that readiness matches the intended dependencies. With a `repository`, `node scripts/agent-issues.mjs sync --check` passes.
 
 Planning is ready for implementation when these checks pass and the handoff identifies the first ready task, remaining blockers and required evidence. Continue through [the delivery workflow](workflow.md); keep gate and integration rules there as the single source of truth.
