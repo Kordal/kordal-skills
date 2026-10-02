@@ -35,11 +35,14 @@ When `$ARGUMENTS` starts with `feature`, plan the rest of it by the "Plan a feat
 
 ## Update a scaffolded project
 
-When `$ARGUMENTS` is `update`, bring the project's scaffold up to date instead of planning.
+When `$ARGUMENTS` is `update`, bring the project's scaffold up to date instead of planning. The update changes the tooling every task runs on, so it belongs between two milestones.
 
-1. Run `bash ${CLAUDE_SKILL_DIR}/bootstrap.sh --diff` in the project root. It prints what changed in the scaffold since the version the project records, and every scaffold file the project lacks. A project with no recorded version gets a file-by-file comparison instead.
-2. Show the owner the list. Apply each scaffold change to the project's file, keeping the project's own content; copy the missing files.
-3. Run `make agent-check` and `bash tests/integration/check-docs.sh`. Done when both pass; then run `bash ${CLAUDE_SKILL_DIR}/bootstrap.sh --stamp` and commit the update as its own commit.
+1. **Place.** Work on main with a clean tree. Stop, and say what has to finish first, when `node scripts/agent-local.mjs next` lists a `CLAIMED` task or the integration branch holds work main lacks (`git merge-base --is-ancestor <integration branch> main` fails).
+2. **Migrate the names.** Where `docs/plans/backlog.json` still has `"mvp"`, run `node ${CLAUDE_SKILL_DIR}/migrate.mjs` in the project root. It renames the manifest key, the integration branch, the `docs/product/mvp<N>*` documents with their links, and on GitHub the branch and the milestone; it commits nothing. Commit its changes as their own commit.
+3. **Diff.** Run `bash ${CLAUDE_SKILL_DIR}/bootstrap.sh --diff`. It prints what changed in the scaffold since the version the project records, and every scaffold file the project lacks. A project with no recorded version gets a file-by-file comparison instead. Show the owner the list.
+4. **Apply** each scaffold change to the project's file, keeping the project's own content; copy the missing files.
+5. **Check.** Run `node scripts/agent-summary.mjs`, `make agent-check` and `bash tests/integration/check-docs.sh`. Done when the last two pass.
+6. **Record.** Run `bash ${CLAUDE_SKILL_DIR}/bootstrap.sh --stamp`, commit the update as its own commit and move the integration branch to it with `git branch -f <integration branch> main`. With a `repository`, push main and run `node scripts/agent-local.mjs publish`; done when `node scripts/agent-issues.mjs sync --check` passes.
 
 ## Run the stages as gates
 

@@ -23,7 +23,7 @@ Needs `git`, `node`, `make` and, for the GitHub mirror, `gh` logged in. The skil
 | --- | --- | --- | --- |
 | Planning | Opus 5.5 | high | `kordal-plan` frontmatter |
 | Delivery | Opus 5.5 | medium | `kordal-build` frontmatter; the `kordal-builder` agent in `all` mode |
-| Review | Fable | high | the `kordal-reviewer` agent |
+| Review | Opus 5.5 | high | the `kordal-reviewer` agent |
 | Improvement questions | Opus 5.5 frames and observes; Fable investigates | high | `kordal-improve` frontmatter; the `kordal-investigator` agent |
 
 A skill's pin holds for the turn that invokes it; the session's own model resumes on the next prompt. The agents' pins always hold.
@@ -70,7 +70,7 @@ Six stages; a stage closes only with evidence. The owner decides at the stages i
 Per task: claim, implement, gate, review, evidence, finish, report.
 
 - **Gate.** `make pr-check` on the task's commit; a runtime change after it needs the gate again.
-- **Review.** The diff on two axes, Standards and Spec, by the `kordal-reviewer` agent: another model than the one that wrote the code (Fable, high effort), read-only. Recorded in the plan; an unreviewed task cannot be finished.
+- **Review.** The diff on two axes, Standards and Spec, by the `kordal-reviewer` agent: Opus 5.5 at high effort, in a context that has not seen the implementation, read-only. Recorded in the plan; an unreviewed task cannot be finished.
 - **Evidence.** Screenshots of the running product in `docs/evidence/<ID>/`.
 - **Report.** What was added, screenshots, what was verified, how to try it, what is next; also posted on the task's issue.
 
@@ -120,6 +120,8 @@ bash kordal-plan/bootstrap.sh --stamp <dir>  # record the current version
 ```
 
 Before committing, bootstrap a throwaway project and run `make agent-check` and `bash tests/integration/check-docs.sh` in it.
+
+`kordal-plan/migrate.mjs` renames a project scaffolded when the unit was called an MVP (`"mvp"`, `mvp<N>`, "MVP <N>") to milestones; `/kordal-plan update` runs it first. Its tests: `node --test kordal-plan/migrate.test.mjs`.
 
 ## Status
 

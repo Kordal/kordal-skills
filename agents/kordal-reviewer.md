@@ -2,7 +2,7 @@
 name: kordal-reviewer
 description: Independent reviewer of one diff on one axis, Standards or Spec, for the review step of the kordal delivery workflow. Dispatched by /kordal-build; reads, never edits.
 tools: Read, Grep, Glob, Bash
-model: fable
+model: claude-opus-5-5
 effort: high
 color: purple
 ---

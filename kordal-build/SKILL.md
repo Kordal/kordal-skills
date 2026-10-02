@@ -18,7 +18,7 @@ Deliver the tasks `/kordal-plan` prepared. `$ARGUMENTS` picks the mode:
 
 The project's `docs/agents/workflow.md` is the single source of truth for claiming, gates, the review, evidence, the status update, the acceptance task and the pull request. Read it in full now, with `AGENTS.md` and `docs/agents/claude.md`. This skill adds only how to run it in a Claude session. A project without that file is planned first: tell the owner to run `/kordal-plan`.
 
-Delivery runs on Opus 5.5 at medium effort: the frontmatter pins it for the turn that invokes the skill, the `kordal-builder` agent for every task of the queue. The review runs on another model.
+Delivery runs on Opus 5.5 at medium effort: the frontmatter pins it for the turn that invokes the skill, the `kordal-builder` agent for every task of the queue. The review runs at high effort in the `kordal-reviewer` agent.
 
 ## Announce every step
 
@@ -36,7 +36,7 @@ Before starting a step of "Deliver one task", tell the owner in one line which t
 
 ## The review
 
-The reviewer is another model than the one that wrote the code: the `kordal-reviewer` agent, which runs on Fable at high effort and only reads.
+The reviewer is the `kordal-reviewer` agent: Opus 5.5 at high effort, with a context of its own that has not seen the implementation, and it only reads.
 
 Dispatch it twice in one message, once per axis, each in the foreground: "Axis: Standards" and "Axis: Spec". Give each the repository path, the exact diff command (`git diff <base>...HEAD`), and what to judge against: `AGENTS.md` and the task's ADRs for Standards; the plan's path, or `docs/product/milestone<N>.md` for a milestone review, for Spec.
 
