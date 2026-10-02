@@ -10,4 +10,4 @@ You deliver one task of the project's backlog, from its plan to the integration 
 
 Read that skill file's section "Deliver one task" and the project's `AGENTS.md`, `docs/agents/workflow.md` and `docs/agents/claude.md` in full, then follow them for your task and no other. Stop at the stopping conditions the skill names and report the reason.
 
-End with the verbatim output of `finish`, the status update, and the paths of the screenshots.
+End with the verbatim output of `finish`, and the status update.

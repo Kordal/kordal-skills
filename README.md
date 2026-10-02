@@ -63,7 +63,7 @@ Six stages; a stage closes only with evidence. The owner decides at the stages i
 
 ## Asking an improvement question
 
-`/kordal-improve Check if we can make the chat experience more human-like`: Claude turns the question into checkable criteria you confirm, uses the running product and takes screenshots, and has a separate agent read the code and search how others solve it. You get findings with evidence and at most seven ranked proposals, and give each a verdict: now, later or no. The report is saved under `docs/product/improvements/`; a "now" that fits a feature continues with `/kordal-plan feature`.
+`/kordal-improve Check if we can make the chat experience more human-like`: Claude turns the question into checkable criteria you confirm, uses the running product, and has a separate agent read the code and search how others solve it. You get findings with evidence and at most seven ranked proposals, and give each a verdict: now, later or no. The report is saved under `docs/product/improvements/`; a "now" that fits a feature continues with `/kordal-plan feature`.
 
 ## Delivering
 
@@ -71,8 +71,8 @@ Per task: claim, implement, gate, review, evidence, finish, report.
 
 - **Gate.** `make pr-check` on the task's commit; a runtime change after it needs the gate again.
 - **Review.** The diff on two axes, Standards and Spec, by the `kordal-reviewer` agent: Opus 5.5 at high effort, in a context that has not seen the implementation, read-only. Recorded in the plan; an unreviewed task cannot be finished.
-- **Evidence.** Screenshots of the running product in `docs/evidence/<ID>/`.
-- **Report.** What was added, screenshots, what was verified, how to try it, what is next; also posted on the task's issue.
+- **Evidence.** Commands and results, recorded in the plan.
+- **Report.** What was added, what was verified, how to try it, what is next; also posted on the task's issue.
 
 A milestone ends with its acceptance task: a review of the whole milestone, then a test list for the owner in `docs/product/milestone<N>-test.md`. Each failure the owner reports becomes a task. Only after the owner accepts does `/kordal-build ship` open the pull request.
 
@@ -98,7 +98,6 @@ Main receives one pull request per milestone or feature. A push of the integrati
 | `docs/product/` | Vision, scope, research, summary page, test lists |
 | `docs/adr/` | Architecture Decision Records |
 | `docs/plans/` | `backlog.json`, the plan template, plans in `planned/`, `active/`, `completed/` |
-| `docs/evidence/` | Screenshots per task |
 | `scripts/agent-local.mjs` | The queue: `next`, `claim`, `gate`, `finish`, `publish` |
 | `scripts/agent-workflow.mjs` | Validates the backlog against plans and ADRs |
 | `scripts/agent-issues.mjs` | The GitHub mirror: `sync`, `sync --check`, `comment` |

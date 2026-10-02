@@ -19,7 +19,7 @@ You investigate one question about a product and its code: where it falls short 
 
 One per gap between the product and a criterion, each with its evidence and its kind:
 
-- **Observed**: seen in the running product; name the screenshot or the observation.
+- **Observed**: seen in the running product; name the observation.
 - **Read in code**: follows from the code and was not run; give `file:line`.
 - **External**: what others do; give the link.
 

@@ -15,17 +15,17 @@ Turn the question into two to four criteria that can be checked: what "better" w
 
 ## 2. Observe
 
-Where the question concerns behaviour, start the product and use the part in question the way a user would, once per criterion. Save a screenshot of each thing worth showing under `docs/product/improvements/<date>-<slug>/` and write down what you saw. Where the product cannot be started or the session has no browser tool, say so and continue from the code alone. A question about the code itself skips this step.
+Where the question concerns behaviour, start the product and use the part in question the way a user would, once per criterion. Write down what you saw. Where the product cannot be started, say so and continue from the code alone. A question about the code itself skips this step.
 
 ## 3. Investigate
 
-Dispatch the `kordal-investigator` agent in the foreground (Opus 5.5 at high effort; a generic subagent where that agent is missing, and then say so in the report). Give it the question, the confirmed criteria, the repository path, and your observations with their screenshot paths.
+Dispatch the `kordal-investigator` agent in the foreground (Opus 5.5 at high effort; a generic subagent where that agent is missing, and then say so in the report). Give it the question, the confirmed criteria, the repository path, and your observations.
 
 Check its report before passing it on: open each cited `file:line`, and drop or mark "unverified" a finding whose evidence you cannot find.
 
 ## 4. Report
 
-Show the owner the findings, the ranked proposals with the recommendation, and what is already fine, with the screenshots themselves: send the files where the session can, link their paths otherwise.
+Show the owner the findings, the ranked proposals with the recommendation, and what is already fine.
 
 ## 5. Choose
 

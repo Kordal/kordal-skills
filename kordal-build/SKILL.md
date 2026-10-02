@@ -30,9 +30,9 @@ Before starting a step of "Deliver one task", tell the owner in one line which t
 2. **Implement** the plan: its ADRs first, then every acceptance criterion including the failure behaviour, with the tests the plan names. Commit.
 3. **Gate.** `node scripts/agent-local.mjs gate`. Done when it records a pass for the commit.
 4. **Review.** Run [the review](#the-review) on the diff since the integration branch, against the task's plan. Fix every confirmed finding; a runtime fix returns to step 3. Done when the plan's Review section records the reviewed commit, the reviewer and each finding with its resolution.
-5. **Evidence.** Start the product on the gated commit and take the screenshots the workflow requires, with the browser tool of this session or the project's own browser tests. Look at each screenshot before recording it: it shows the feature working, with real data. Fill the plan's Evidence and Completion Notes, tick each acceptance criterion you checked against evidence, move the plan to `completed/`, commit.
+5. **Evidence.** Fill the plan's Evidence and Completion Notes, tick each acceptance criterion you checked against evidence, move the plan to `completed/`, commit.
 6. **Finish.** `node scripts/agent-local.mjs finish <ID>`. Done when it prints that the task is on the integration branch and, with a GitHub mirror, that the branch was pushed and the issues synced. A warning that GitHub was not updated is repaired with `node scripts/agent-local.mjs publish` before the report.
-7. **Report.** Give the owner the status update of the workflow's "Report" section, and post it on the task's issue as that section says. Show the owner the screenshots themselves: send the files where the session can, link their paths otherwise.
+7. **Report.** Give the owner the status update of the workflow's "Report" section, and post it on the task's issue as that section says.
 
 ## The review
 
@@ -50,9 +50,9 @@ Repeat until `next` lists no `READY` task and none this checkout left `CLAIMED`:
 
 1. Take the first task in manifest order.
 2. Announce the task to the owner: `CAP-003 · started · 3 of 6 tasks`. The subagent's steps stay inside its own context, so this line and the status update at the end are what the owner sees of a task in this mode.
-3. Dispatch one foreground `kordal-builder` agent for it (Opus 5.5 at medium effort; a generic subagent where that agent is missing), so every task starts from its plan with a clean context: "Read `${CLAUDE_SKILL_DIR}/SKILL.md` and deliver task `<ID>` by its section 'Deliver one task', in `<project root>`. End with the verbatim output of `finish`, the status update and the screenshot paths."
-4. Verify the result yourself: `next` no longer lists the task, and the screenshot files exist. A task the subagent left unfinished is yours to resume by "Deliver one task".
-5. Relay the status update and the screenshots to the owner, and continue with the next task without waiting for an answer.
+3. Dispatch one foreground `kordal-builder` agent for it (Opus 5.5 at medium effort; a generic subagent where that agent is missing), so every task starts from its plan with a clean context: "Read `${CLAUDE_SKILL_DIR}/SKILL.md` and deliver task `<ID>` by its section 'Deliver one task', in `<project root>`. End with the verbatim output of `finish` and the status update."
+4. Verify the result yourself: `next` no longer lists the task. A task the subagent left unfinished is yours to resume by "Deliver one task".
+5. Relay the status update to the owner, and continue with the next task without waiting for an answer.
 
 The milestone's acceptance task is yours, not a subagent's: when it is the task to take, deliver it by [The acceptance task](#the-acceptance-task). So is the last task of [a standalone feature](#a-standalone-feature). When only `WAIT` and `BLOCKED` tasks remain, report each blocker with who resolves it and stop.
 

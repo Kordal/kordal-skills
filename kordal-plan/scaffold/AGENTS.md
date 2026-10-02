@@ -55,7 +55,6 @@ One task, one branch. `node scripts/agent-local.mjs next` lists the queue; `clai
 | `docs/adr/` | Architecture Decision Records |
 | `docs/plans/` | Backlog manifest and task plans (`planned/`, `active/`, `completed/`) |
 | `docs/agents/` | Planning workflow, delivery workflow, role instructions |
-| `docs/evidence/` | Screenshots that prove completed tasks, one directory per task |
 | `scripts/` | Agent delivery tooling, the GitHub issue mirror and the gate runner |
 | `tests/` | Cross-component checks |
 

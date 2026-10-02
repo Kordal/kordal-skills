@@ -15,7 +15,7 @@ Planning runs on Opus 5.5 at high effort. The frontmatter pins that for the turn
 
 ## Scaffold a new project
 
-The scaffold is the agent structure this workflow runs on: `AGENTS.md`, `CLAUDE.md`, `docs/agents/` (planning, delivery, role instructions), `docs/plans/` (manifest, template, `planned/`, `active/`, `completed/`), `docs/adr/`, `docs/evidence/`, `docs/product/vision.md`, the delivery scripts and the GitHub issue mirror with their tests, the gate runner, the documentation check, the Makefile gates and the hosted structure check.
+The scaffold is the agent structure this workflow runs on: `AGENTS.md`, `CLAUDE.md`, `docs/agents/` (planning, delivery, role instructions), `docs/plans/` (manifest, template, `planned/`, `active/`, `completed/`), `docs/adr/`, `docs/product/vision.md`, the delivery scripts and the GitHub issue mirror with their tests, the gate runner, the documentation check, the Makefile gates and the hosted structure check.
 
 1. Run `bash ${CLAUDE_SKILL_DIR}/bootstrap.sh` in the project root (`bootstrap.sh` sits beside this file). It initializes Git when needed, reports every file as `created` or `kept`, and records the scaffold version in `docs/agents/scaffold-version`.
 2. Merge each `kept` file by hand with its counterpart in `${CLAUDE_SKILL_DIR}/scaffold/`: an existing Makefile gains the scaffold's variables and targets, an existing `AGENTS.md` gains its delivery-workflow section and repository map.

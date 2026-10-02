@@ -9,7 +9,7 @@ git switch task/<id>
 # implement the complete acceptance slice; commit
 node scripts/agent-local.mjs gate          # make pr-check, recorded for the commit
 # review the diff on Standards and Spec; fix; record it in the plan's Review
-# record evidence and screenshots, move the plan to completed/; commit
+# record evidence, move the plan to completed/; commit
 node scripts/agent-local.mjs finish <ID>   # fast-forwards and pushes the integration branch; issue: closed
 # give the owner the status update; post it on the issue
 ```

@@ -60,7 +60,7 @@ No independent reviewer follows you: the gate, the review and your own check of 
 
    It runs `make pr-check`. A failed gate records nothing.
 2. Review the task's diff against the integration branch with a fresh context, as a reviewer who did not write it, on two axes. **Standards:** does the change follow `AGENTS.md`, the ADRs and the conventions of the code around it? **Spec:** does it deliver the plan's acceptance criteria and failure behaviour, and nothing outside its scope? Fix every confirmed finding; a runtime fix needs the gate again. Record in the plan's Review section the reviewed commit, who reviewed (the agent and its model), and each finding with what was done about it, or "No findings". `make agent-check` rejects a completed plan whose Review is pending.
-3. Record the evidence in the plan and move it to `completed/`. For every change a user can see, take a screenshot of the running product on the gated commit, save it as `docs/evidence/<ID>/<what-it-shows>.png` and link it from the plan's Evidence section with a one-line caption. A task with nothing to see records the command or API output instead and says so. Where the session has no way to take a screenshot, the Evidence section says that plainly. Commits after the gate may change documentation only; a runtime change needs the gate again. [`scripts/agent-scope.mjs`](../../scripts/agent-scope.mjs) holds that rule.
+3. Record the evidence in the plan and move it to `completed/`. Commits after the gate may change documentation only; a runtime change needs the gate again. [`scripts/agent-scope.mjs`](../../scripts/agent-scope.mjs) holds that rule.
 4. Integrate:
 
    ```bash
@@ -76,12 +76,11 @@ A documentation task needs no gate.
 After every `finish`, give the owner a status update, then select the next task if you were asked to process the queue:
 
 - **Added:** what a user can now do, in plain words.
-- **Screenshots:** each one shown with its caption, or the output recorded in its place.
 - **Verified:** the acceptance criteria checked against evidence, and the gate result with its commit.
 - **Try it:** the two or three steps by which the owner sees it working.
 - **Next:** the output of `node scripts/agent-local.mjs next`, and any follow-up recorded in Completion Notes.
 
-With a GitHub mirror, post the same update on the task's issue: write it to a file outside the repository and run `node scripts/agent-issues.mjs comment <ID> <file>`. Embed each screenshot by its URL at the pushed commit: `![caption](https://github.com/<repository>/blob/<commit>/docs/evidence/<ID>/<file>.png?raw=true)`.
+With a GitHub mirror, post the same update on the task's issue: write it to a file outside the repository and run `node scripts/agent-issues.mjs comment <ID> <file>`.
 
 ## Gates
 
