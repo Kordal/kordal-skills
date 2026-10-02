@@ -57,14 +57,14 @@ test('next lists what is ready, and a claim is a branch that only one agent gets
 test('finish puts a gated task on the integration branch and unblocks its dependants', t => {
   const f = fixture(t);
   const head = f.implement();
-  assert.match(f.cli(['finish', 'CAP-001']).stderr, /No passed pr-check covers/);
+  assert.match(f.cli(['finish', 'CAP-001']).stderr, /No passed task-check covers/);
   assert.equal(f.git('rev-parse', 'milestone1'), f.git('rev-parse', 'main'), 'nothing integrated without a gate');
   const failed = f.cli(['gate'], 'fail');
   assert.equal(failed.status, 1);
-  assert.match(failed.stderr, /pr-check failed/);
-  assert.match(f.cli(['finish', 'CAP-001']).stderr, /No passed pr-check covers/, 'a failed gate records nothing');
+  assert.match(failed.stderr, /task-check failed/);
+  assert.match(f.cli(['finish', 'CAP-001']).stderr, /No passed task-check covers/, 'a failed gate records nothing');
   const passed = f.cli(['gate']);
-  assert.match(passed.stdout, /make pr-check\n[\s\S]*pr-check passed on [a-f0-9]{40}; recorded\./);
+  assert.match(passed.stdout, /make task-check\n[\s\S]*task-check passed on [a-f0-9]{40}; recorded\./);
   // The plan completed after the gate: documentation only.
   f.write('docs/plans/completed/CAP-001-identity.md', plan(tasks[0]) + '\nGate passed.\n');
   const final = f.commit('plan');
@@ -81,7 +81,7 @@ test('a runtime change after the gate needs the gate again', t => {
   assert.equal(f.cli(['gate']).status, 0);
   f.write('src/identity.js', 'export const id = 2;\n');
   f.commit('fix');
-  assert.match(f.cli(['finish', 'CAP-001']).stderr, /No passed pr-check covers/);
+  assert.match(f.cli(['finish', 'CAP-001']).stderr, /No passed task-check covers/);
   assert.equal(f.cli(['gate']).status, 0);
   assert.equal(f.cli(['finish', 'CAP-001']).status, 0);
 });
@@ -117,7 +117,7 @@ test('finish refuses an unfinished, foreign, dirty or outdated branch and a chec
   f.git('switch', '--quiet', 'task/cap-001');
   assert.match(f.cli(['finish', 'CAP-001']).stderr, /milestone1 moved: merge it into task\/cap-001, then gate again/);
   f.git('merge', '--quiet', '--no-edit', 'milestone1');
-  assert.match(f.cli(['finish', 'CAP-001']).stderr, /No passed pr-check covers/, 'the merge is a new commit after the gate');
+  assert.match(f.cli(['finish', 'CAP-001']).stderr, /No passed task-check covers/, 'the merge is a new commit after the gate');
   assert.equal(f.cli(['gate']).status, 0);
   f.git('worktree', 'add', '--quiet', path.join(f.dir, 'bin/other'), 'milestone1');
   assert.match(f.cli(['finish', 'CAP-001']).stderr, /milestone1 is checked out in a worktree/);
@@ -144,5 +144,20 @@ test('moving a runtime file into the documentation is still a runtime change', t
   f.move('src/tool.js', 'docs/tool.js');
   f.move('docs/plans/planned/CAP-001-identity.md', 'docs/plans/completed/CAP-001-identity.md');
   f.commit('CAP-001');
-  assert.match(f.cli(['finish', 'CAP-001']).stderr, /No passed pr-check covers/);
+  assert.match(f.cli(['finish', 'CAP-001']).stderr, /No passed task-check covers/);
+});
+test('the task that completes the queue needs the full gate, also when it changes documentation only', t => {
+  const f = fixture(t);
+  f.implement();
+  assert.equal(f.cli(['gate']).status, 0);
+  assert.equal(f.cli(['finish', 'CAP-001']).status, 0, 'a task-check is enough while tasks remain');
+  assert.equal(f.cli(['claim', 'CAP-002']).status, 0);
+  f.git('switch', '--quiet', 'task/cap-002');
+  f.move('docs/plans/planned/CAP-002-freshness.md', 'docs/plans/completed/CAP-002-freshness.md');
+  f.commit('CAP-002');
+  assert.equal(f.cli(['gate']).status, 0);
+  assert.match(f.cli(['finish', 'CAP-002']).stderr, /CAP-002 completes the queue: no passed pr-check covers/);
+  assert.match(f.cli(['gate', 'pr-check']).stdout, /make pr-check\n[\s\S]*pr-check passed on/);
+  assert.equal(f.cli(['finish', 'CAP-002']).status, 0);
+  assert.equal(f.cli(['next']).stdout, '');
 });

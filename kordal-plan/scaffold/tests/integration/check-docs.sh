@@ -9,7 +9,7 @@
 # Only inline links — [text](target), with or without a title — are checked; a path named in running
 # text or in a code span is not. External links (http, https, mailto) are not
 # fetched. Needs git and a local Node.js: `make lint` skips it, saying so,
-# when there is none; the gate (`make pr-check`) runs `make agent-check`, which requires it.
+# when there is none; the gate (`make task-check`) runs `make agent-check`, which requires it.
 set -euo pipefail
 
 cd "$(dirname "$0")/../.."

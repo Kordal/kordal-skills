@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Runs the stages of a gate in order and reports how long each took. Used by
-# `make pr-check` and `make premerge-check`.
+# `make task-check`, `make pr-check` and `make premerge-check`.
 #
 #   - a stage is a make target; the first stage that fails stops the gate, and
 #     the gate exits with that stage's status;

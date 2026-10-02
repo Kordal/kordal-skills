@@ -68,7 +68,7 @@ Six stages; a stage closes only with evidence. The owner decides at the stages i
 
 Per task: claim, implement, gate, review, check, finish, report.
 
-- **Gate.** `make pr-check` on the task's commit; a runtime change after it needs the gate again.
+- **Gate.** `make task-check`, the fast gate, on the task's commit; a runtime change after it needs the gate again. The full gate, `make pr-check` with the slow suites, runs once: `finish` demands it of the task that completes the queue.
 - **Review.** The diff on two axes, Standards and Spec, by the `kordal-reviewer` agent: Opus 5.5 at high effort, in a context that has not seen the implementation, read-only. Recorded in the plan; an unreviewed task cannot be finished.
 - **Check.** Claude starts the product and walks the task's flow as a user would, including the failure paths; nothing is recorded but the ticked criteria.
 - **Report.** What was added, what was verified, how to try it, what is next; also posted on the task's issue.
@@ -103,7 +103,7 @@ Main receives one pull request per milestone or feature. A push of the integrati
 | `scripts/agent-summary.mjs` | Generates the summary page |
 | `scripts/agent-scope.mjs`, `scripts/gate.sh` | Which changes need the gate; the gate runner |
 | `tests/integration/check-docs.sh` | Checks Markdown links |
-| `Makefile` | `lint`, `test`, `agent-check`, `pr-check`, `premerge-check` |
+| `Makefile` | `lint`, `test`, `agent-check`, `task-check`, `pr-check`, `premerge-check` |
 
 A new project has no product checks: `make test` fails until the first task adds tests, and `make premerge-check` fails until a task gives it stages.
 

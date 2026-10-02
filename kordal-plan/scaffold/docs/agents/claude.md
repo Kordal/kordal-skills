@@ -7,7 +7,7 @@ node scripts/agent-local.mjs next          # what is ready, claimed, waiting
 node scripts/agent-local.mjs claim <ID>    # creates task/<id> from the integration branch; issue: in progress
 git switch task/<id>
 # implement the complete acceptance slice; commit
-node scripts/agent-local.mjs gate          # make pr-check, recorded for the commit
+node scripts/agent-local.mjs gate          # make task-check, recorded for the commit
 # review the diff on Standards and Spec; fix; record it in the plan's Review
 # start the product and walk the plan's Flow as a user would
 # tick the criteria, fill Completion Notes, move the plan to completed/; commit

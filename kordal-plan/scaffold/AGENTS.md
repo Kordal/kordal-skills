@@ -25,7 +25,7 @@ Introduce another technology only when the active task requires it, with an ADR.
 ## Rules
 
 1. **Architecture changes** require an ADR in `docs/adr/` (see [docs/adr/README.md](docs/adr/README.md)).
-2. **Tests** accompany every piece of functionality; a change is done when its tests pass. `make lint` and `make test` need nothing running; `make pr-check` is the gate of every task and `make premerge-check` the gate of the integration branch before it is pushed.
+2. **Tests** accompany every piece of functionality; a change is done when its tests pass. `make lint` and `make test` need nothing running; `make task-check` is the gate of every task; `make pr-check`, the full gate, and `make premerge-check` run once, when the milestone is complete.
 3. **Stay on task.** Implement only the selected task. Move its plan from `docs/plans/planned/` to `active/` when work starts and to `completed/` before the task is integrated. Record unrelated follow-up work in Completion Notes.
 
 <!-- Planning stage 4 and later ADRs add the product's own rules here: data ownership, communication between components, public contracts, migrations. -->
@@ -45,7 +45,7 @@ Introduce another technology only when the active task requires it, with an ADR.
 
 A milestone is delivered locally: **no pull request and no reviewer's approval per task.** Main receives one pull request, when the whole milestone is done, and the owner merges it.
 
-One task, one branch. `node scripts/agent-local.mjs next` lists the queue; `claim <ID>` creates `task/<id>` from the integration branch; `gate` runs `make pr-check` and records the pass; `finish <ID>` puts the task on the integration branch. Where the manifest names a GitHub repository, `claim` and `finish` also push the integration branch and update the task's issue; leave every other push to the workflow's steps. Do not commit to the integration branch directly. Read your [role instructions](docs/agents/claude.md) before acting.
+One task, one branch. `node scripts/agent-local.mjs next` lists the queue; `claim <ID>` creates `task/<id>` from the integration branch; `gate` runs `make task-check` and records the pass; `finish <ID>` puts the task on the integration branch. Where the manifest names a GitHub repository, `claim` and `finish` also push the integration branch and update the task's issue; leave every other push to the workflow's steps. Do not commit to the integration branch directly. Read your [role instructions](docs/agents/claude.md) before acting.
 
 ## Repository map
 

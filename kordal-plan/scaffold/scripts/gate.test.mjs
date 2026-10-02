@@ -77,7 +77,9 @@ function dryRun(target) {
   assert.equal(result.status, 0, result.stderr);
   return [...result.stdout.matchAll(new RegExp(`^== ${target}: stage (\\S+)$`, 'gm'))].map(m => m[1]);
 }
-test('the gate of every task keeps lint, the agent structure check and the tests', () => {
-  const stages = dryRun('pr-check');
-  for (const stage of ['lint', 'agent-check', 'test']) assert.ok(stages.includes(stage), stage);
+test('the gate of every task keeps lint, the agent structure check and the tests, and the full gate repeats them', () => {
+  for (const gate of ['task-check', 'pr-check']) {
+    const stages = dryRun(gate);
+    for (const stage of ['lint', 'agent-check', 'test']) assert.ok(stages.includes(stage), `${gate}: ${stage}`);
+  }
 });

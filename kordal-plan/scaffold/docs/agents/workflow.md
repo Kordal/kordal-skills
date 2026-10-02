@@ -58,7 +58,7 @@ No independent reviewer follows you: the gate, the review and your own check of 
    node scripts/agent-local.mjs gate
    ```
 
-   It runs `make pr-check`. A failed gate records nothing.
+   It runs `make task-check`, the fast gate. A failed gate records nothing.
 2. Review the task's diff against the integration branch with a fresh context, as a reviewer who did not write it, on two axes. **Standards:** does the change follow `AGENTS.md`, the ADRs and the conventions of the code around it? **Spec:** does it deliver the plan's acceptance criteria and failure behaviour, and nothing outside its scope? Fix every confirmed finding; a runtime fix needs the gate again. Record in the plan's Review section the reviewed commit, who reviewed (the agent and its model), and each finding with what was done about it, or "No findings". `make agent-check` rejects a completed plan whose Review is pending.
 3. Use what you built. For every change a user can see, start the product on the gated commit and walk the plan's Flow as a user would, in the browser or the client the product has: the journey and each failure path. A defect you find is fixed before the task goes on; a runtime fix needs the gate again. A task with nothing to see exercises its command or API instead.
 4. Tick each acceptance criterion you have seen work, fill the Completion Notes and move the plan to `completed/`. Commits after the gate may change documentation only; a runtime change needs the gate again. [`scripts/agent-scope.mjs`](../../scripts/agent-scope.mjs) holds that rule.
@@ -87,10 +87,11 @@ With a GitHub mirror, post the same update on the task's issue: write it to a fi
 
 | Gate | When | Stages |
 | --- | --- | --- |
-| `make pr-check` | every task, before `finish` | `FAST_STAGES` of the Makefile: lint, the agent structure check and the tests, then whatever the product needs on every task (a clean bootstrap, acceptance, contracts, browser tests) |
-| `make premerge-check` | in the acceptance task, on the whole milestone; earlier for a task that changes shutdown, backup, upgrade or the release artifacts | `RESILIENCE_STAGES` of the Makefile: operations, backup/restore, upgrade, build and verification of the release artifacts |
+| `make task-check` | every task, before `finish` | `TASK_STAGES` of the Makefile: lint, the agent structure check and the tests that run in a minute or two with nothing started |
+| `make pr-check` | once, by the task that completes the queue: the acceptance task, or the last task of a standalone feature | The task gate, then `MILESTONE_STAGES`: the slow suites, such as a clean bootstrap, acceptance, contracts and browser tests |
+| `make premerge-check` | once, with the full gate; earlier for a task that changes shutdown, backup, upgrade or the release artifacts | `RESILIENCE_STAGES` of the Makefile: operations, backup/restore, upgrade, build and verification of the release artifacts |
 
-A gate stage is a make target; a task that adds a kind of check adds its stage. A new repository has no product checks: `make test` fails until the first runtime task puts its tests there, and `make premerge-check` fails until a task gives it stages. Each gate prints the duration of every stage, also after a failure.
+A gate stage is a make target; a task that adds a kind of check adds its stage, to the task gate when it is fast and to the milestone stages when it is slow. `finish` refuses the task that completes the queue without a passed `pr-check`, so the slow suites run once per milestone and never per task. What they find is fixed as a task of its own. A new repository has no product checks: `make test` fails until the first runtime task puts its tests there, and `make premerge-check` fails until a task gives it stages. Each gate prints the duration of every stage, also after a failure.
 
 ## Add a task during delivery
 
@@ -119,7 +120,7 @@ Start the product, hand the owner the list and stop. Each failure the owner repo
 
 ### Finish
 
-Run both gates on the branch, which is what the owner tested: `node scripts/agent-local.mjs gate` and `node scripts/agent-local.mjs gate premerge-check`. Then `finish`.
+Run the full gates on the branch, which is what the owner tested: `node scripts/agent-local.mjs gate pr-check` and `node scripts/agent-local.mjs gate premerge-check`. Then `finish`.
 
 ## A standalone feature
 
@@ -127,7 +128,7 @@ A feature planned while nothing else is in progress has its own integration bran
 
 1. Review the whole feature, the diff from main, where the feature has more than one task; record it in the task's Review.
 2. Write `docs/product/feature-<slug>-test.md`: how to start the product from this branch, a checklist of what to do and what the owner should see, and the failure cases to try. Start the product, hand the owner the list and stop.
-3. Fix what the owner reports on this branch and gate again. When the owner says the feature passes, record that in the test document with the date and the tested commit, run `node scripts/agent-local.mjs gate premerge-check` where the gate has stages, and `finish`.
+3. Fix what the owner reports on this branch and gate again. When the owner says the feature passes, record that in the test document with the date and the tested commit, run `node scripts/agent-local.mjs gate pr-check`, and `gate premerge-check` where that gate has stages, and `finish`.
 
 ## Open the pull request when the work is done
 

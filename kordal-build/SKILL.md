@@ -73,7 +73,7 @@ Follow the workflow's "The acceptance task" section on the task's own branch:
 
 1. **Milestone review.** Run [the review](#the-review) on the diff since main. Add each confirmed finding as a task, deliver it by "Deliver one task", merge the integration branch and review again. Done when the review of the current head has no open finding and `docs/product/milestone<N>-test.md` records it.
 2. **Owner acceptance.** Complete the test document, start the product, give the owner the checklist and how to reach the running product, and stop. The owner's test is a gate; the milestone waits there until the owner answers. Deliver every failure the owner reports as a task, then hand the updated checklist back.
-3. **Finish.** When the owner says the milestone passes, record it in the test document, run both gates, finish the task and tell the owner `/kordal-build-ship` is next.
+3. **Finish.** When the owner says the milestone passes, record it in the test document, run the full gates (`gate pr-check`, `gate premerge-check`), finish the task and tell the owner `/kordal-build-ship` is next.
 
 ## A standalone feature
 

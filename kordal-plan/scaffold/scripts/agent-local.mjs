@@ -14,7 +14,9 @@ import { needsGate } from './agent-scope.mjs';
 // A manifest that names a GitHub repository gets a mirror of that state:
 // `claim` and `finish` push the integration branch and sync the issues.
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const gateNames = ['pr-check', 'premerge-check'];
+// task-check gates every task; pr-check, the full gate, gates the task that
+// completes the queue, and covers a task as task-check does.
+const gateNames = ['task-check', 'pr-check', 'premerge-check'];
 const git = (...args) => execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
 const tryGit = (...args) => { try { return git(...args); } catch { return null; } };
 const assert = (condition, message) => { if (!condition) throw new Error(message); };
@@ -59,7 +61,7 @@ const runtimeChange = (from, to) => needsGate(git('diff', '--name-only', '--no-r
 
 function main() {
   const [command = 'next', argument] = process.argv.slice(2);
-  assert(['next', 'claim', 'gate', 'finish', 'publish'].includes(command), 'Usage: agent-local.mjs next|claim <ID>|gate [pr-check|premerge-check]|finish <ID>|publish');
+  assert(['next', 'claim', 'gate', 'finish', 'publish'].includes(command), 'Usage: agent-local.mjs next|claim <ID>|gate [task-check|pr-check|premerge-check]|finish <ID>|publish');
   const manifest = load(), integration = manifest.integration_branch;
   if (command === 'next') {
     for (const task of manifest.tasks) {
@@ -85,7 +87,7 @@ function main() {
     return;
   }
   if (command === 'gate') {
-    const gate = argument ?? 'pr-check';
+    const gate = argument ?? 'task-check';
     assert(gateNames.includes(gate), `Unknown gate ${gate}; use ${gateNames.join(' or ')}`);
     assert(!git('status', '--porcelain'), 'Commit your work first: a gate is recorded for a commit');
     const sha = git('rev-parse', 'HEAD');
@@ -109,10 +111,12 @@ function main() {
   }
   // A runtime change needs the fast gate on a commit of this branch that no
   // runtime change follows: later commits may only complete the plan.
-  if (runtimeChange(base, head)) {
-    const gated = git('rev-list', `${base}..${head}`).split('\n').find(sha => fs.existsSync(gateRecord(sha, 'pr-check')) && !runtimeChange(sha, head));
-    assert(gated, `No passed pr-check covers ${head}. Run: node scripts/agent-local.mjs gate`);
-  }
+  const covered = gates => git('rev-list', `${base}..${head}`).split('\n').find(sha => gates.some(gate => fs.existsSync(gateRecord(sha, gate))) && !runtimeChange(sha, head));
+  if (runtimeChange(base, head)) assert(covered(['task-check', 'pr-check']), `No passed task-check covers ${head}. Run: node scripts/agent-local.mjs gate`);
+  // The task that completes the queue carries the full gate for all of it,
+  // whatever that task itself changed.
+  const last = manifest.tasks.every(t => t.id === task.id || stateOf(manifest, t).state === 'DONE');
+  if (last) assert(covered(['pr-check']), `${task.id} completes the queue: no passed pr-check covers ${head}. Run: node scripts/agent-local.mjs gate pr-check`);
   assert(!git('worktree', 'list', '--porcelain').split('\n').includes(`branch refs/heads/${integration}`), `${integration} is checked out in a worktree; switch that worktree to another branch`);
   // Fast-forward, and only from the revision that was verified above.
   assert(tryGit('update-ref', `refs/heads/${integration}`, head, base) !== null, `${integration} moved during verification; rerun`);
