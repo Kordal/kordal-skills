@@ -19,7 +19,8 @@ Needs `git`, `node`, `make` and, for the GitHub mirror, `gh` logged in. The skil
 | --- | --- | --- | --- |
 | Planning | Opus 5.5 | high | `kordal-plan` frontmatter |
 | Delivery | Opus 5.5 | medium | `kordal-build` frontmatter; the `kordal-builder` agent in `all` mode |
-| Review | Opus 5.5 | high | the `kordal-reviewer` agent |
+| Task review, one pass | Opus 5.5 | medium | the `kordal-task-reviewer` agent |
+| Milestone review, two axes | Opus 5.5 | high | the `kordal-reviewer` agent |
 | Improvement questions | Opus 5.5 | high | `kordal-improve` frontmatter; the `kordal-investigator` agent |
 
 `/kordal-plan-feature`, `/kordal-plan-update`, `/kordal-build-all`, `/kordal-build-serial` and `/kordal-build-ship` are commands of their own that run the matching mode of `/kordal-plan` or `/kordal-build`, with the same model pins.
@@ -69,7 +70,7 @@ Six stages; a stage closes only with evidence. The owner decides at the stages i
 Per task: claim, implement, gate, review, finish, report.
 
 - **Gate.** `make task-check`, the fast gate, on the task's commit; a runtime change after it needs the gate again. The full gate, `make pr-check` with the slow suites, runs once: `finish` demands it of the task that completes the queue.
-- **Review.** The diff on two axes, Standards and Spec, by the `kordal-reviewer` agent: Opus 5.5 at high effort, in a context that has not seen the implementation, read-only. Recorded in the plan; an unreviewed task cannot be finished.
+- **Review.** The diff on two axes, Standards and Spec, in one pass by the `kordal-task-reviewer` agent: Opus 5.5 at medium effort, in a context that has not seen the implementation, read-only. The milestone review keeps two reviewers at high effort. Recorded in the plan; an unreviewed task cannot be finished.
 - **No slow testing per task.** A task runs lint and unit tests only. Browser, device and end-to-end tests are written in the task and run once, at the end.
 - **Report.** What was added, what was verified, how to try it, what is next; also posted on the task's issue.
 
