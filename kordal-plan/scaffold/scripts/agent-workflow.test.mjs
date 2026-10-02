@@ -4,12 +4,12 @@ import { section, validateManifest } from './agent-workflow.mjs';
 
 // validateManifest against an in-memory repository: two tasks, the second
 // depending on the first and owning an ADR.
-const sections = ['Goal', 'Context', 'Task Contract', 'Scope', 'Out of Scope', 'Affected Components', 'Acceptance Criteria', 'Flow', 'Implementation Steps', 'Tests', 'Risks', 'Evidence', 'Review', 'Completion Notes'];
+const sections = ['Goal', 'Context', 'Task Contract', 'Scope', 'Out of Scope', 'Affected Components', 'Acceptance Criteria', 'Flow', 'Implementation Steps', 'Tests', 'Risks', 'Review', 'Completion Notes'];
 const adr = 'docs/adr/001-storage.md';
 const body = (task, heading, done) => {
   if (heading === 'Task Contract') return `Issue: ${task.issue ? `#${task.issue}` : 'none'}\n\nDependencies: ${task.depends_on.join(', ') || 'none'}\n`;
   if (heading === 'Acceptance Criteria') return `- [${done ? 'x' : ' '}] Works`;
-  return ['Evidence', 'Review', 'Completion Notes'].includes(heading) && !done ? 'Pending.' : 'Text.';
+  return ['Review', 'Completion Notes'].includes(heading) && !done ? 'Pending.' : 'Text.';
 };
 const plan = (task, done = false) => `# ${task.id}: ${task.title}\n\n` + sections.map(s => `## ${s}\n\n${body(task, s, done)}\n`).join('\n');
 function fixture() {
@@ -70,13 +70,13 @@ test('a plan fills every section; a comment is not content', () => {
   assert.throws(f.check, /CAP-001 missing section: Risks/);
   assert.equal(section('## A\n\n<!-- hint -->\n\n## B\n\nText.\n', 'A'), '');
 });
-test('a completed task has met criteria, recorded evidence, a recorded review and Accepted ADRs', () => {
+test('a completed task has met criteria, a recorded review, completion notes and Accepted ADRs', () => {
   let f = fixture(); complete(f, f.tasks[0]);
   f.check();
   f.files['docs/plans/completed/CAP-001-identity.md'] = plan(f.tasks[0], true).replace('- [x] Works', '- [x] Works\n- [ ] Fails safely');
   assert.throws(f.check, /CAP-001 has incomplete acceptance criteria/);
-  f.files['docs/plans/completed/CAP-001-identity.md'] = plan(f.tasks[0], true).replace('## Evidence\n\nText.', '## Evidence\n\nPending.');
-  assert.throws(f.check, /CAP-001 missing completion Evidence/);
+  f.files['docs/plans/completed/CAP-001-identity.md'] = plan(f.tasks[0], true).replace('## Completion Notes\n\nText.', '## Completion Notes\n\nPending.');
+  assert.throws(f.check, /CAP-001 missing completion Completion Notes/);
   f.files['docs/plans/completed/CAP-001-identity.md'] = plan(f.tasks[0], true).replace('## Review\n\nText.', '## Review\n\nPending.');
   assert.throws(f.check, /CAP-001 missing completion Review/, 'an unreviewed task is not complete');
   f = fixture(); complete(f, f.tasks[0]); complete(f, f.tasks[1]);

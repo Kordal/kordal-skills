@@ -10,11 +10,11 @@ git switch task/<id>
 node scripts/agent-local.mjs gate          # make pr-check, recorded for the commit
 # review the diff on Standards and Spec; fix; record it in the plan's Review
 # start the product and walk the plan's Flow as a user would
-# record evidence, move the plan to completed/; commit
+# tick the criteria, fill Completion Notes, move the plan to completed/; commit
 node scripts/agent-local.mjs finish <ID>   # fast-forwards and pushes the integration branch; issue: closed
 # give the owner the status update; post it on the issue
 ```
 
-Before `finish`, check every acceptance criterion against evidence you produced, and read your own diff as a reviewer would: contracts, migrations, failure paths, permissions and cross-component behaviour. Record deviations and follow-up work in Completion Notes.
+Before `finish`, check every acceptance criterion in the running product, and read your own diff as a reviewer would: contracts, migrations, failure paths, permissions and cross-component behaviour. Record deviations and follow-up work in Completion Notes.
 
 Do not push by hand, open a pull request or commit to the integration branch directly. The milestone's last task is its acceptance task: follow "The acceptance task" in the workflow, and open the pull request only after the owner has accepted the milestone. A standalone feature carries its acceptance in its last task: "A standalone feature" in the workflow.

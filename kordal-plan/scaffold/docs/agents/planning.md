@@ -58,7 +58,7 @@ Done when each material uncertainty is resolved or assigned an explicit blocking
 
 ## 5. Prepare the delivery backlog
 
-Split the scope into complete, testable features. Each task includes its contracts, owning components, UI and tests where applicable. Use the [task template](../plans/template.md) for plans in `docs/plans/planned/`, with observable acceptance criteria, failure behavior, dependencies, affected components and evidence requirements. Every plan has a "Flow" section: a Mermaid flowchart of the journey the task delivers, including its failure paths, or "None: <reason>" for a task with no user-facing journey.
+Split the scope into complete, testable features. Each task includes its contracts, owning components, UI and tests where applicable. Use the [task template](../plans/template.md) for plans in `docs/plans/planned/`, with observable acceptance criteria, failure behavior, dependencies and affected components. Every plan has a "Flow" section: a Mermaid flowchart of the journey the task delivers, including its failure paths, or "None: <reason>" for a task with no user-facing journey.
 
 Map every milestone acceptance scenario to the task or tasks that deliver and verify it. Include the necessary authorization, migrations, operations, upgrade, backup/restore and final release acceptance work. The last task of the milestone is its [acceptance task](workflow.md#the-acceptance-task): it depends on every other task, exercises the assembled user journey on the actual release artifacts, and delivers `docs/product/milestone<N>-test.md` with the milestone review and the owner's acceptance. Keep real-source pilot evidence separate from fixture acceptance. The first task of the first milestone bootstraps the development platform: it gives `make lint`, `make test` and the gates their product stages.
 
@@ -97,7 +97,7 @@ Before switching delivery to the next milestone:
 - Run `make agent-check`, `bash tests/integration/check-docs.sh` and `git diff --check` after preparing the queue. These validate structure, not product acceptance or the value of the chosen scope.
 - Run `node scripts/agent-local.mjs next` in the delivery checkout and confirm that readiness matches the intended dependencies. With a `repository`, `node scripts/agent-issues.mjs sync --check` passes.
 
-Planning is ready for implementation when these checks pass and the handoff identifies the first ready task, remaining blockers and required evidence. Continue through [the delivery workflow](workflow.md); keep gate and integration rules there as the single source of truth.
+Planning is ready for implementation when these checks pass and the handoff identifies the first ready task, and remaining blockers. Continue through [the delivery workflow](workflow.md); keep gate and integration rules there as the single source of truth.
 
 ## Plan a feature
 

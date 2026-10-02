@@ -67,11 +67,11 @@ Six stages; a stage closes only with evidence. The owner decides at the stages i
 
 ## Delivering
 
-Per task: claim, implement, gate, review, evidence, finish, report.
+Per task: claim, implement, gate, review, check, finish, report.
 
 - **Gate.** `make pr-check` on the task's commit; a runtime change after it needs the gate again.
 - **Review.** The diff on two axes, Standards and Spec, by the `kordal-reviewer` agent: Opus 5.5 at high effort, in a context that has not seen the implementation, read-only. Recorded in the plan; an unreviewed task cannot be finished.
-- **Evidence.** Commands and results, recorded in the plan.
+- **Check.** Claude starts the product and walks the task's flow as a user would, including the failure paths; nothing is recorded but the ticked criteria.
 - **Report.** What was added, what was verified, how to try it, what is next; also posted on the task's issue.
 
 A milestone ends with its acceptance task: a review of the whole milestone, then a test list for the owner in `docs/product/milestone<N>-test.md`. Each failure the owner reports becomes a task. Only after the owner accepts does `/kordal-build ship` open the pull request.

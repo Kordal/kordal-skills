@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 // The real scripts/agent-local.mjs in a real Git repository: two tasks, the
 // second depending on the first, both planned on main and on the integration
 // branch milestone1. `make` is a fake that passes or fails as GATE_RESULT says.
-const sections = ['Goal', 'Context', 'Task Contract', 'Scope', 'Out of Scope', 'Affected Components', 'Acceptance Criteria', 'Flow', 'Implementation Steps', 'Tests', 'Risks', 'Evidence', 'Review', 'Completion Notes'];
+const sections = ['Goal', 'Context', 'Task Contract', 'Scope', 'Out of Scope', 'Affected Components', 'Acceptance Criteria', 'Flow', 'Implementation Steps', 'Tests', 'Risks', 'Review', 'Completion Notes'];
 const tasks = [
   { id: 'CAP-001', title: 'Identity', slug: 'identity', depends_on: [], adrs: [] },
   { id: 'CAP-002', title: 'Freshness', slug: 'freshness', depends_on: ['CAP-001'], adrs: [] },
@@ -65,9 +65,9 @@ test('finish puts a gated task on the integration branch and unblocks its depend
   assert.match(f.cli(['finish', 'CAP-001']).stderr, /No passed pr-check covers/, 'a failed gate records nothing');
   const passed = f.cli(['gate']);
   assert.match(passed.stdout, /make pr-check\n[\s\S]*pr-check passed on [a-f0-9]{40}; recorded\./);
-  // Evidence recorded after the gate: documentation only.
+  // The plan completed after the gate: documentation only.
   f.write('docs/plans/completed/CAP-001-identity.md', plan(tasks[0]) + '\nGate passed.\n');
-  const final = f.commit('evidence');
+  const final = f.commit('plan');
   assert.notEqual(final, head);
   const finished = f.cli(['finish', 'CAP-001']);
   assert.equal(finished.status, 0, finished.stderr);
@@ -131,7 +131,7 @@ test('finish refuses a task whose review is not recorded', t => {
   f.implement();
   assert.equal(f.cli(['gate']).status, 0);
   f.write('docs/plans/completed/CAP-001-identity.md', plan(tasks[0]).replace('## Review\n\nText.', '## Review\n\nPending.'));
-  f.commit('evidence without a review');
+  f.commit('plan without a review');
   assert.match(f.cli(['finish', 'CAP-001']).stderr, /CAP-001 missing completion Review/);
   assert.equal(f.git('rev-parse', 'milestone1'), f.git('rev-parse', 'main'));
 });

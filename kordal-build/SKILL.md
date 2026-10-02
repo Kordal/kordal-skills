@@ -16,7 +16,7 @@ Deliver the tasks `/kordal-plan` prepared. `$ARGUMENTS` picks the mode:
 | `all` | [Work the queue](#work-the-queue) |
 | `ship` | [Ship](#ship): open the pull request of the milestone or the feature |
 
-The project's `docs/agents/workflow.md` is the single source of truth for claiming, gates, the review, evidence, the status update, the acceptance task and the pull request. Read it in full now, with `AGENTS.md` and `docs/agents/claude.md`. This skill adds only how to run it in a Claude session. A project without that file is planned first: tell the owner to run `/kordal-plan`.
+The project's `docs/agents/workflow.md` is the single source of truth for claiming, gates, the review, the status update, the acceptance task and the pull request. Read it in full now, with `AGENTS.md` and `docs/agents/claude.md`. This skill adds only how to run it in a Claude session. A project without that file is planned first: tell the owner to run `/kordal-plan`.
 
 Delivery runs on Opus 5.5 at medium effort: the frontmatter pins it for the turn that invokes the skill, the `kordal-builder` agent for every task of the queue. The review runs at high effort in the `kordal-reviewer` agent.
 
@@ -30,7 +30,7 @@ Before starting a step of "Deliver one task", tell the owner in one line which t
 2. **Implement** the plan: its ADRs first, then every acceptance criterion including the failure behaviour, with the tests the plan names. Commit.
 3. **Gate.** `node scripts/agent-local.mjs gate`. Done when it records a pass for the commit.
 4. **Review.** Run [the review](#the-review) on the diff since the integration branch, against the task's plan. Fix every confirmed finding; a runtime fix returns to step 3. Done when the plan's Review section records the reviewed commit, the reviewer and each finding with its resolution.
-5. **Evidence.** Start the product on the gated commit and walk the plan's Flow as a user would, with the browser tool of this session or the project's own browser tests: the journey and each failure path. Where neither is available, say in the Evidence that the feature was not exercised by hand. Fix what you find; a runtime fix returns to step 3. Then fill the plan's Evidence and Completion Notes, tick each acceptance criterion you checked against evidence, move the plan to `completed/`, commit.
+5. **Check.** Start the product on the gated commit and walk the plan's Flow as a user would, with the browser tool of this session or the project's own browser tests: the journey and each failure path. Fix what you find; a runtime fix returns to step 3. Then tick each acceptance criterion you saw work, fill the Completion Notes, move the plan to `completed/`, commit.
 6. **Finish.** `node scripts/agent-local.mjs finish <ID>`. Done when it prints that the task is on the integration branch and, with a GitHub mirror, that the branch was pushed and the issues synced. A warning that GitHub was not updated is repaired with `node scripts/agent-local.mjs publish` before the report.
 7. **Report.** Give the owner the status update of the workflow's "Report" section, and post it on the task's issue as that section says.
 
@@ -66,7 +66,7 @@ Follow the workflow's "The acceptance task" section on the task's own branch:
 
 ## A standalone feature
 
-A feature on its own `feature/<slug>` branch has no acceptance task. Its last task carries the acceptance: deliver it by "Deliver one task" up to the evidence, then follow the workflow's "A standalone feature" section before `finish`. Take that task yourself, as you take an acceptance task, because it stops for the owner.
+A feature on its own `feature/<slug>` branch has no acceptance task. Its last task carries the acceptance: deliver it by "Deliver one task" up to the check, then follow the workflow's "A standalone feature" section before `finish`. Take that task yourself, as you take an acceptance task, because it stops for the owner.
 
 ## Ship
 

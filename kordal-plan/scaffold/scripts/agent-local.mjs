@@ -100,7 +100,7 @@ function main() {
   const task = taskById(manifest, argument);
   assert(git('rev-parse', '--abbrev-ref', 'HEAD') === taskBranch(task), `Finish ${task.id} from its branch ${taskBranch(task)}`);
   assert(!git('status', '--porcelain'), 'Commit your work first');
-  assert(fs.existsSync(path.join(root, planPath(task, 'completed'))), `Move the plan to ${planPath(task, 'completed')} with its evidence first`);
+  assert(fs.existsSync(path.join(root, planPath(task, 'completed'))), `Move the plan to ${planPath(task, 'completed')} first`);
   const base = git('rev-parse', integration), head = git('rev-parse', 'HEAD');
   assert(tryGit('merge-base', '--is-ancestor', base, head) !== null, `${integration} moved: merge it into ${taskBranch(task)}, then gate again`);
   const files = git('diff', '--name-only', '--no-renames', base, head).split('\n').filter(Boolean);
@@ -108,7 +108,7 @@ function main() {
     for (const phase of ['active', 'completed']) assert(!files.includes(planPath(other, phase)), `This branch also changes ${other.id}; one task per branch`);
   }
   // A runtime change needs the fast gate on a commit of this branch that no
-  // runtime change follows: later commits may only record evidence.
+  // runtime change follows: later commits may only complete the plan.
   if (runtimeChange(base, head)) {
     const gated = git('rev-list', `${base}..${head}`).split('\n').find(sha => fs.existsSync(gateRecord(sha, 'pr-check')) && !runtimeChange(sha, head));
     assert(gated, `No passed pr-check covers ${head}. Run: node scripts/agent-local.mjs gate`);

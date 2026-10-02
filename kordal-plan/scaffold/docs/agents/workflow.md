@@ -12,7 +12,7 @@ Delivery is **local**: develop, verify and integrate on the local machine. A tas
 | Which plan and dependencies belong to a task? | [backlog.json](../plans/backlog.json) |
 | Is work available, claimed or done? | The local repository: `node scripts/agent-local.mjs next` |
 | Why this architecture? | Applicable ADRs in `docs/adr/` |
-| What proves completion? | Plan acceptance criteria, recorded evidence and a passed local gate on the task's commits |
+| What proves completion? | Plan acceptance criteria, the recorded review and a passed local gate on the task's commits |
 
 The local repository holds the state, and every worktree of it sees the same:
 
@@ -50,7 +50,7 @@ Validate through the public behaviour named in the plan. UI rendering alone does
 
 ## Gate and integrate
 
-No independent reviewer follows you: the gate, the review and your own check of every acceptance criterion against evidence are what stands between the task and the integration branch.
+No independent reviewer follows you: the gate, the review and your own check of every acceptance criterion in the running product are what stands between the task and the integration branch.
 
 1. Commit the work, then run the gate through the helper, which records a pass for that commit:
 
@@ -61,7 +61,7 @@ No independent reviewer follows you: the gate, the review and your own check of 
    It runs `make pr-check`. A failed gate records nothing.
 2. Review the task's diff against the integration branch with a fresh context, as a reviewer who did not write it, on two axes. **Standards:** does the change follow `AGENTS.md`, the ADRs and the conventions of the code around it? **Spec:** does it deliver the plan's acceptance criteria and failure behaviour, and nothing outside its scope? Fix every confirmed finding; a runtime fix needs the gate again. Record in the plan's Review section the reviewed commit, who reviewed (the agent and its model), and each finding with what was done about it, or "No findings". `make agent-check` rejects a completed plan whose Review is pending.
 3. Use what you built. For every change a user can see, start the product on the gated commit and walk the plan's Flow as a user would, in the browser or the client the product has: the journey and each failure path. A defect you find is fixed before the task goes on; a runtime fix needs the gate again. A task with nothing to see exercises its command or API instead.
-4. Record the evidence in the plan, including what you walked through and what you saw, and move it to `completed/`. Commits after the gate may change documentation only; a runtime change needs the gate again. [`scripts/agent-scope.mjs`](../../scripts/agent-scope.mjs) holds that rule.
+4. Tick each acceptance criterion you have seen work, fill the Completion Notes and move the plan to `completed/`. Commits after the gate may change documentation only; a runtime change needs the gate again. [`scripts/agent-scope.mjs`](../../scripts/agent-scope.mjs) holds that rule.
 5. Integrate:
 
    ```bash
@@ -77,7 +77,7 @@ A documentation task needs no gate.
 After every `finish`, give the owner a status update, then select the next task if you were asked to process the queue:
 
 - **Added:** what a user can now do, in plain words.
-- **Verified:** the acceptance criteria checked against evidence, and the gate result with its commit.
+- **Verified:** what you saw work in the running product, and the gate result with its commit.
 - **Try it:** the two or three steps by which the owner sees it working.
 - **Next:** the output of `node scripts/agent-local.mjs next`, and any follow-up recorded in Completion Notes.
 
@@ -119,11 +119,11 @@ Start the product, hand the owner the list and stop. Each failure the owner repo
 
 ### Finish
 
-Run both gates on the branch, which is what the owner tested: `node scripts/agent-local.mjs gate` and `node scripts/agent-local.mjs gate premerge-check`. Record them as the task's evidence and `finish`.
+Run both gates on the branch, which is what the owner tested: `node scripts/agent-local.mjs gate` and `node scripts/agent-local.mjs gate premerge-check`. Then `finish`.
 
 ## A standalone feature
 
-A feature planned while nothing else is in progress has its own integration branch, `feature/<slug>`, and no separate acceptance task: its last task carries the acceptance. On that task's branch, after its evidence is recorded:
+A feature planned while nothing else is in progress has its own integration branch, `feature/<slug>`, and no separate acceptance task: its last task carries the acceptance. On that task's branch, after its walk through the product:
 
 1. Review the whole feature, the diff from main, where the feature has more than one task; record it in the task's Review.
 2. Write `docs/product/feature-<slug>-test.md`: how to start the product from this branch, a checklist of what to do and what the owner should see, and the failure cases to try. Start the product, hand the owner the list and stop.
@@ -134,7 +134,7 @@ A feature planned while nothing else is in progress has its own integration bran
 When `next` lists nothing and the test document, `docs/product/milestone<N>-test.md` or `docs/product/feature-<slug>-test.md`, records the owner's acceptance, and for a milestone its review:
 
 1. With a GitHub mirror, run `node scripts/agent-issues.mjs sync --check`: the mirror matches before the pull request names its issues.
-2. Open one pull request from the integration branch, which `finish` has pushed, to main, with Summary, Evidence and Merge Danger; the Summary lists every task with its issue.
+2. Open one pull request from the integration branch, which `finish` has pushed, to main, with Summary and Merge Danger; the Summary lists every task with its issue.
 3. The hosted check `Agent structure` runs `make agent-check` on it. A failed, missing, cancelled or skipped check is not a pass.
 4. Report the pull request and the state of its checks to the owner, who merges it.
 

@@ -22,7 +22,7 @@ ADRs: none
 
 ## Acceptance Criteria
 
-<!-- Observable user/API outcomes, including failure behaviour, as checkboxes. Check each against evidence before completion. -->
+<!-- Observable user/API outcomes, including failure behaviour, as checkboxes. Tick each when you have seen it work. -->
 
 - [ ] <!-- criterion -->
 
@@ -49,12 +49,6 @@ ADRs: none
 ## Tests
 
 <!-- Tests that prove the task is done. -->
-
-## Evidence
-
-<!-- Commands/results, environment, revision and limits. Distinguish local/CI and fake/real-source evidence. -->
-
-Pending.
 
 ## Review
 
