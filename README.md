@@ -28,6 +28,7 @@ Every skill and agent runs on the model you choose for the session; none of them
 | `/kordal-plan-feature <idea>` | Plans a small addition: at most three tasks, no new architecture decision |
 | `/kordal-plan-update` | Brings a project's scaffold up to date with this repository |
 | `/kordal-improve <question>` | Investigates a question about the product or its code; returns evidenced findings and ranked proposals. Changes no code |
+| `/kordal-issue <description>` | Turns a rough description of a bug, idea or request into a clear GitHub issue, created after you have seen it |
 | `/kordal-build` | Delivers the next ready task, or resumes the unfinished one |
 | `/kordal-build <ID>` | Delivers that task |
 | `/kordal-build-all` | Delivers the whole queue, one agent per task; up to five independent tasks in parallel, each in its own worktree |
