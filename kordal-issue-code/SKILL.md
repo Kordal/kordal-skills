@@ -1,7 +1,7 @@
 ---
 name: kordal-issue-code
 description: Implement a GitHub issue that passed review (`ready-for-dev`) and open the pull request that closes it, or address the review of that pull request.
-disable-model-invocation: true
+disable-model-invocation: false
 argument-hint: "<issue number or URL>"
 ---
 

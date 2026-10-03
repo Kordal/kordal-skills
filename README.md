@@ -39,7 +39,7 @@ Every skill and agent runs on the model you choose for the session; none of them
 | `/kordal-build-serial` | The same, one task at a time |
 | `/kordal-build-ship` | Opens the pull request of the accepted milestone or feature, then stops the dev servers, emulators and containers the milestone started. The owner merges |
 
-Claude may start a command itself when the conversation calls for it. Two run only when you type them, because they publish: `/kordal-build-ship` and `/kordal-issue-code`.
+Claude may start a command itself when the conversation calls for it. One runs only when you type it, because it opens the milestone's pull request: `/kordal-build-ship`.
 
 ## Agents
 

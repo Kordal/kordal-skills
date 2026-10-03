@@ -119,7 +119,7 @@ An issue carries one state label at a time: `needs-review`, `needs-rework`, `nee
 
 Give the owner the result, the comment's URL and the blocking findings. Then what follows:
 
-- `READY`: implementation, with `/kordal-issue-code <number>`, which the owner types. In a project that is delivering a milestone the issue joins it instead, with `/kordal-plan-feature <number>`.
+- `READY`: implementation, with `/kordal-issue-code <number>`. In a project that is delivering a milestone the issue joins it instead, with `/kordal-plan-feature <number>`.
 - `NEEDS_REWORK`, `TOO_LARGE`: the issue is edited or split, then reviewed again.
 - `NEEDS_INFO`: the owner answers the questions on the issue, then it is reviewed again.
 - `DUPLICATE`: the owner closes it or says what sets it apart.
