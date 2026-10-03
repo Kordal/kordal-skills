@@ -2,10 +2,17 @@
 name: kordal-plan
 description: Plan the next milestone through the six-stage planning workflow, or a small feature through its short path; in a new project, scaffold the agent structure first.
 disable-model-invocation: false
-argument-hint: "[milestone number or outcome idea | feature <idea> | update]"
+argument-hint: "[milestone number or outcome idea | feature <idea or issue number> | update]"
 ---
 
-Plan the milestone named in `$ARGUMENTS`; with no argument, plan the one after the latest `docs/product/milestone<N>.md`, or Milestone 1 when none exists.
+Plan what the project builds next. `$ARGUMENTS` picks the mode:
+
+| `$ARGUMENTS` | Mode |
+| --- | --- |
+| empty | Plan the milestone after the latest `docs/product/milestone<N>.md`, or Milestone 1 when none exists |
+| a milestone number or an outcome idea | Plan that milestone |
+| `feature <idea or issue number>` | [Plan a feature](#plan-a-feature) |
+| `update` | [Update a scaffolded project](#update-a-scaffolded-project) |
 
 The project's `docs/agents/planning.md` is the single source of truth for the stages, their artifacts and their "Done when" criteria. This skill adds only how to run it in a Claude session. Where the file is missing, [scaffold the project](#scaffold-a-new-project) first. Then read it in full.
 
@@ -26,6 +33,7 @@ The scaffold's placeholders are HTML comments naming the planning stage that fil
 
 When `$ARGUMENTS` starts with `feature`, plan the rest of it by the "Plan a feature" section of `docs/agents/planning.md` instead of the six stages. A project that has no agreed milestone yet plans its first milestone instead: say so.
 
+- **From an issue.** Where the rest is an issue's number or URL, read it (`gh issue view <number> --comments`) and plan from its text; its acceptance criteria become the plans'. At step 4 the first task takes that number as its `issue`, in the manifest and on the plan's line `Issue: #<number>`, so that `sync` rewrites the issue from the plan and no second one appears. Then drop its review label: `gh issue edit <number> --remove-label ready-for-dev`.
 - The fit check is a real gate. A feature over its limits ends the run with the limit it broke and the advice to run `/kordal-plan`; the owner alone may overrule that.
 - Two owner decisions, both with `AskUserQuestion`: the feature sentence at step 1, the plans at step 3. Everything else is yours.
 - Write the plans with `writing-for-agents`.
@@ -70,6 +78,8 @@ Everything else is yours to resolve: routine engineering choices, task splits, d
 - **Stage 3, scope**: `grilling`, on the draft scope before it goes to the owner; `prototype`, when a journey question needs something to click, and always for an outcome the user sees: show it to the owner at real size on each target device, in the browser pane or on the device itself.
 - **Stage 4, uncertainties**: `prototype` for a bounded question; `domain-modeling` for each Proposed ADR.
 - **Stage 5, backlog**: `writing-for-agents`, since every task plan is read by the agent that implements it. Open the implementation summary in the owner's browser (`open docs/product/milestone<N>-summary.html`) and say what it shows in three lines.
+
+Where a skill this file names is not installed, do its step yourself and tell the owner which one was missing.
 
 ## Planning stays beside delivery
 

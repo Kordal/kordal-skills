@@ -81,7 +81,7 @@ A feature on its own `feature/<slug>` branch has no acceptance task. Its last ta
 
 ## Ship
 
-Ship only on `/kordal-build-ship`: the pull request to main is the milestone's release, so it is opened on the owner's explicit command and in no other mode.
+Ship only when the owner typed `/kordal-build-ship` or `/kordal-build ship`: the pull request to main is the milestone's release, so it is opened on the owner's explicit command and in no other mode.
 
 1. Confirm the gate before the pull request: `next` lists nothing, and the test document on the integration branch records the owner's acceptance: `docs/product/milestone<N>-test.md`, with the milestone review, or `docs/product/feature-<slug>-test.md`.
 2. Follow the workflow's "Open the pull request when the work is done" section.

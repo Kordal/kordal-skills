@@ -1,6 +1,6 @@
 # kordal-skills
 
-[Claude Code](https://claude.com/claude-code) skills that plan and deliver a product with agents: `/kordal-plan` decides what to build, `/kordal-build` builds it, `/kordal-improve` finds what is worth improving. Four agents do the delivery, review and investigation work they dispatch. The repository of the project is the source of truth; GitHub issues mirror it.
+[Claude Code](https://claude.com/claude-code) skills that plan and deliver a product with agents: `/kordal-plan` decides what to build, `/kordal-build` builds it, `/kordal-improve` finds what is worth improving. Four agents do the delivery, review and investigation work they dispatch. In a milestone the repository of the project is the source of truth and GitHub issues mirror it. Between milestones, and in a repository without the scaffold, `/kordal-issue`, `/kordal-issue-review` and `/kordal-issue-code` take one change [from an issue to a pull request](#from-an-issue-to-a-pull-request).
 
 ## Install
 
@@ -13,7 +13,9 @@ for agent in ~/Development/kordal-skills/agents/*.md; do ln -sfn "$agent" ~/.cla
 
 Any folder works in place of `~/Development/kordal-skills`. The links make a `git pull` there update every skill and agent.
 
-Needs Claude Code, `git`, `node`, `make` and, for the GitHub mirror, `gh` logged in. The skills load in Claude Code sessions started after the install.
+Needs Claude Code, `git`, `node`, `make` and, for the GitHub mirror and the issue commands, `gh` logged in. The skills load in Claude Code sessions started after the install.
+
+Planning and the review also call six skills this repository does not ship: `research`, `grilling`, `prototype`, `domain-modeling`, `writing-for-agents` and `code-review`. Where one is missing, Claude does that step itself and says which skill it lacked.
 
 Every skill and agent runs on the model you choose for the session; none of them sets a model or an effort level. To pin one, add `model:` and `effort:` to the frontmatter of a skill or an agent.
 
@@ -25,17 +27,19 @@ Every skill and agent runs on the model you choose for the session; none of them
 | --- | --- |
 | `/kordal-plan` | Plans the next milestone. In a new folder it scaffolds the project first. Resumes interrupted planning |
 | `/kordal-plan <idea>` | The same, starting from the idea |
-| `/kordal-plan-feature <idea>` | Plans a small addition: at most three tasks, no new architecture decision |
+| `/kordal-plan-feature <idea or issue number>` | Plans a small addition: at most three tasks, no new architecture decision. Given an issue, plans from its text and makes it the first task's issue |
 | `/kordal-plan-update` | Brings a project's scaffold up to date with this repository |
 | `/kordal-improve <question>` | Investigates a question about the product or its code; returns evidenced findings and ranked proposals. Changes no code |
-| `/kordal-issue <description>` | Turns a rough description of a bug, idea or request into a clear GitHub issue, created after you have seen it |
+| `/kordal-issue <description>` | Turns a feature request, bug report, improvement idea or chore into a GitHub issue a coding agent can implement: inspects the repository, writes testable acceptance criteria, creates the issue labelled `needs-review` |
+| `/kordal-issue-review <issue>` | Reviews an issue against the repository before development, in a context that did not write it: one result (`READY`, `NEEDS_REWORK`, `NEEDS_INFO`, `TOO_LARGE`, `DUPLICATE`), posted as one comment, and the matching label. Only `READY` sets `ready-for-dev`. Changes no code |
+| `/kordal-issue-code <issue>` | Implements an issue labelled `ready-for-dev`: branch, the smallest change that meets every acceptance criterion, tests, validation, self-review, and a pull request labelled `needs-pr-review`. Escalates a product decision to the issue (`needs-info`) instead of guessing. Never approves or merges |
 | `/kordal-build` | Delivers the next ready task, or resumes the unfinished one |
 | `/kordal-build <ID>` | Delivers that task |
 | `/kordal-build-all` | Delivers the whole queue, one agent per task; up to five independent tasks in parallel, each in its own worktree |
 | `/kordal-build-serial` | The same, one task at a time |
 | `/kordal-build-ship` | Opens the pull request of the accepted milestone or feature, then stops the dev servers, emulators and containers the milestone started. The owner merges |
 
-Every command runs only when you type it; Claude does not start one on its own.
+Claude may start a command itself when the conversation calls for it. Two run only when you type them, because they publish: `/kordal-build-ship` and `/kordal-issue-code`.
 
 ## Agents
 
@@ -70,6 +74,26 @@ Six stages; a stage closes only with evidence. The owner decides at the stages i
 ## Asking an improvement question
 
 `/kordal-improve Check if we can make the chat experience more human-like`: Claude turns the question into checkable criteria you confirm, uses the running product, and has a separate agent read the code and search how others solve it. You get findings with evidence and at most seven ranked proposals, and give each a verdict: now, later or no. The report is saved under `docs/product/improvements/`; a "now" that fits a feature continues with `/kordal-plan-feature`.
+
+## From an issue to a pull request
+
+For one change outside a milestone: `/kordal-issue` writes the issue, `/kordal-issue-review` judges it against the repository, `/kordal-issue-code` implements it and opens the pull request. Your checkpoint is that pull request; you merge it.
+
+An issue carries one state label at a time:
+
+| Label | Set by | Means |
+| --- | --- | --- |
+| `needs-review` | `/kordal-issue` | Written, not yet judged |
+| `needs-rework` | `/kordal-issue-review` | The text has to change, or the issue has to be split |
+| `needs-info` | `/kordal-issue-review`, `/kordal-issue-code` | A product decision is missing; answer it on the issue |
+| `duplicate`, `already-implemented` | `/kordal-issue-review` | Another issue holds the work, or the code already does it |
+| `ready-for-dev` | `/kordal-issue-review` alone | A coding agent can implement it as it stands |
+| `in-development` | `/kordal-issue-code` | Being implemented on its branch |
+| `needs-pr-review` | `/kordal-issue-code` | The pull request is open |
+
+`/kordal-issue-code` starts only on a `READY` review that is newer than the last edit of the issue's text, and counts only comments by the repository's owner, members and collaborators. An interrupted run, or one that stopped on a question, resumes on its pushed branch.
+
+A project that is delivering a milestone takes no pull request per issue: there the issue joins the milestone with `/kordal-plan-feature <issue number>`, which makes it the first task's issue.
 
 ## Delivering
 
