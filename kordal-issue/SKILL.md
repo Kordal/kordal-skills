@@ -9,13 +9,16 @@ Turn `$ARGUMENTS` into a GitHub issue that someone who never saw this conversati
 
 ## 1. Understand
 
-Decide what it is: a **bug** (something behaves wrongly), a **feature** (something is wanted) or a **chore** (upkeep with no change for users). Find the answers you can find yourself, in step 2; ask the owner only for what remains, in one round with `AskUserQuestion`: what they expected, how often it happens, who is affected.
+Start from everything the owner gave, not the sentence alone: look at each attachment of the conversation and each file path in the description. A screenshot shows the page, the device width and the state; a log or a pasted error gives the exact text; a recording gives the steps. Read every one before asking anything.
+
+Decide what it is: a **bug** (something behaves wrongly), a **feature** (something is wanted) or a **chore** (upkeep with no change for users). Find the answers you can find yourself, in the attachments and in step 2; ask the owner only for what remains, in one round with `AskUserQuestion`: what they expected, how often it happens, who is affected.
 
 ## 2. Ground it
 
 - Read the code the description points at. For a bug, find where it happens and try the cheapest reproduction: a unit test, a command, a request. Start no heavy stack for it.
 - Search for the same issue: `gh issue list --state all --search "<key words>"`. An open duplicate ends the run: show it to the owner and offer to add what is new as a comment.
-- Keep apart what you observed, what you read in the code and what you only suspect.
+- Tie each attachment to the code: the page a screenshot shows, the line an error in a log comes from.
+- Keep apart what you observed, what the attachments show, what you read in the code and what you only suspect.
 
 ## 3. Draft
 
@@ -37,6 +40,7 @@ Rules for the text:
 - Quote the owner's own words where they carry the point, and the exact error text or output in a code block.
 - State facts and their source. A cause you did not confirm is written as a suspicion.
 - Describe the problem and the wanted result; leave the solution to whoever takes the issue, unless the owner asked for one.
+- Put what an attachment shows into words, under "Attachments": what is on the screenshot and what in it is wrong, the lines of the log that matter in a code block. The issue has to stand without the file, since the command line cannot upload one.
 - Short sections, no filler, no praise, no apology.
 
 **Labels**: only labels the repository already has (`gh label list`), such as `bug` or `enhancement`. The `status:` labels belong to the tasks of the backlog and are never set here.
@@ -47,4 +51,4 @@ Show the owner the title, the labels and the body as they will appear. Create th
 
 ## 5. Hand over
 
-Give the owner the issue's URL and what could follow: `/kordal-plan-feature` with the issue's number for a feature that fits the short path, `/kordal-plan` for more, or nothing for an issue that waits. An issue made here is not a task: it enters the backlog only through planning.
+Give the owner the issue's URL. Where a picture or a recording says more than its description, name the files and ask the owner to drag them into the issue on GitHub. Then say what could follow: `/kordal-plan-feature` with the issue's number for a feature that fits the short path, `/kordal-plan` for more, or nothing for an issue that waits. An issue made here is not a task: it enters the backlog only through planning.
