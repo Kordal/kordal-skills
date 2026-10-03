@@ -1,0 +1,30 @@
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+# A newer commit of a pull request replaces the run of the older one; a run on
+# main is never cancelled, so that every commit there has its result.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+jobs:
+  check:
+    name: make check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      # The actions are pinned as the scaffold's own workflow pins them
+      # (kordal-plan/scaffold/.github/workflows/agent-workflow.yml);
+      # tests/repo.test.mjs holds the two to the same commits.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+      # No token and no Git identity: GitHub is a fake gh in every test, and
+      # each test builds its own repositories and configures them itself.
+      - run: make check
