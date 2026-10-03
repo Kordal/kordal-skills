@@ -12,6 +12,13 @@ const requiredSections = ['Goal', 'Context', 'Task Contract', 'Scope', 'Out of S
 const assert = (condition, message) => { if (!condition) throw new Error(message); };
 const planPath = (task, phase) => `docs/plans/${phase}/${task.id}-${task.slug}.md`;
 const readLocal = (file) => { try { return fs.readFileSync(path.join(root, file), 'utf8'); } catch { return null; } };
+const branchName = value => typeof value === 'string' && /^[a-z0-9][a-z0-9/-]*$/.test(value);
+// The project's base branch: an integration branch starts from it and its
+// pull request targets it. A manifest names it only where it is not main. Its
+// name is the repository's own, not the workflow's: whatever Git takes as a
+// branch (Main, release-1.x, feature_x), nothing a command line could misread.
+const baseName = value => typeof value === 'string' && /^[A-Za-z0-9][A-Za-z0-9._/-]*$/.test(value) && !/\.\.|\/\/|[/.]$|\.lock$/.test(value);
+export const baseBranch = manifest => manifest.base_branch ?? 'main';
 // A section runs from its heading to the next heading of the same or a higher
 // level; HTML comments do not count as content.
 export function section(text, heading) {
@@ -30,7 +37,10 @@ export function section(text, heading) {
 export function validateManifest(manifest, read = readLocal) {
   assert(manifest?.version === 1, 'Unsupported manifest version');
   assert(Number.isInteger(manifest.milestone) && manifest.milestone > 0, 'backlog.json names no milestone number');
-  assert(/^[a-z0-9][a-z0-9/-]*$/.test(manifest.integration_branch ?? ''), 'backlog.json names no integration_branch');
+  assert(branchName(manifest.integration_branch), 'backlog.json names no integration_branch');
+  // Where the project's base branch is not main; optional (baseBranch).
+  assert(manifest.base_branch == null || baseName(manifest.base_branch), 'Invalid base_branch; use the name of the repository\'s base branch');
+  assert(manifest.base_branch !== manifest.integration_branch, 'base_branch must differ from integration_branch');
   assert(Array.isArray(manifest.tasks), 'backlog.json has no tasks list');
   // The GitHub repository whose issues mirror the tasks; optional.
   assert(manifest.repository == null || /^[\w.-]+\/[\w.-]+$/.test(manifest.repository), 'Invalid repository; use owner/name');

@@ -14,7 +14,11 @@ import { stateOf } from './agent-local.mjs';
 //   - exactly one status label, derived from the same state `next` shows;
 //   - closed when the task's completed plan is on the integration branch.
 // `sync` is idempotent: it changes only what differs. `sync --check` changes
-// nothing and fails on any difference. AGENT_GH is the gh to run (default: gh).
+// nothing and fails on any difference. `sync --only <ID>,<ID>` is the targeted
+// sync of `claim`, `finish` and `integrate`: the named tasks and the tasks
+// that depend on them directly, one read and at most one write per issue, and
+// no list of labels, milestones or issues. AGENT_GH is the gh to run
+// (default: gh).
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const manifestPath = 'docs/plans/backlog.json';
 const statusLabels = { WAIT: 'waiting', BLOCKED: 'blocked', READY: 'ready', CLAIMED: 'in-progress', DONE: 'done' };
@@ -71,10 +75,36 @@ export function issueBody(manifest, task, state, text) {
 }
 const normal = text => (text ?? '').replace(/\r\n/g, '\n').trim();
 
-function sync(manifest, check) {
+// `only` is the targeted sync: these tasks, each against its own issue. It
+// reconciles what a change of state changes (the state, the status label and
+// the body) and leaves the title and the GitHub milestone, which need the
+// lists, to the full sync.
+function sync(manifest, check, only) {
   const repo = `repos/${manifest.repository}`;
   const problems = [];
   const fix = (message, apply) => { problems.push(message); if (!check) apply(); };
+  const reconcile = (task, issue, milestone) => {
+    const { state } = stateOf(manifest, task);
+    const want = {
+      title: `${task.id}: ${task.title}`,
+      body: issueBody(manifest, task, state, planText(manifest, task, state)),
+      state: state === 'DONE' ? 'closed' : 'open',
+      labels: [...issue.labels.map(l => l.name).filter(n => !(n in labelColors) && !n.startsWith('status:')), statusLabels[state]].sort(),
+      // A finished task keeps the GitHub milestone it was delivered in.
+      milestone: state === 'DONE' && issue.milestone ? issue.milestone.number : milestone,
+    };
+    const patch = {};
+    if (!only && issue.title !== want.title) patch.title = want.title;
+    if (normal(issue.body) !== normal(want.body)) patch.body = want.body;
+    if (issue.state !== want.state) Object.assign(patch, { state: want.state }, want.state === 'closed' ? { state_reason: 'completed' } : {});
+    if (JSON.stringify(issue.labels.map(l => l.name).sort()) !== JSON.stringify(want.labels)) patch.labels = want.labels;
+    if (!only && (issue.milestone?.number ?? null) !== (want.milestone ?? null)) patch.milestone = want.milestone;
+    if (Object.keys(patch).length) fix(`${task.id} #${task.issue}: ${Object.keys(patch).filter(k => k !== 'state_reason').join(', ')} differ${patch.labels ? ` (wanted ${statusLabels[state]})` : ''}`, () => gh(`${repo}/issues/${task.issue}`, 'PATCH', patch));
+  };
+  if (only) {
+    for (const task of only) reconcile(task, gh(`${repo}/issues/${task.issue}`));
+    return problems;
+  }
 
   const labels = new Set(list(`${repo}/labels`).map(l => l.name));
   for (const [name, color] of Object.entries(labelColors)) {
@@ -103,22 +133,7 @@ function sync(manifest, check) {
     if (task.issue == null) continue;
     const issue = live.get(task.issue);
     assert(issue, `${task.id}: issue #${task.issue} does not exist in ${manifest.repository}`);
-    const { state } = stateOf(manifest, task);
-    const want = {
-      title: `${task.id}: ${task.title}`,
-      body: issueBody(manifest, task, state, planText(manifest, task, state)),
-      state: state === 'DONE' ? 'closed' : 'open',
-      labels: [...issue.labels.map(l => l.name).filter(n => !(n in labelColors) && !n.startsWith('status:')), statusLabels[state]].sort(),
-      // A finished task keeps the GitHub milestone it was delivered in.
-      milestone: state === 'DONE' && issue.milestone ? issue.milestone.number : milestone,
-    };
-    const patch = {};
-    if (issue.title !== want.title) patch.title = want.title;
-    if (normal(issue.body) !== normal(want.body)) patch.body = want.body;
-    if (issue.state !== want.state) Object.assign(patch, { state: want.state }, want.state === 'closed' ? { state_reason: 'completed' } : {});
-    if (JSON.stringify(issue.labels.map(l => l.name).sort()) !== JSON.stringify(want.labels)) patch.labels = want.labels;
-    if ((issue.milestone?.number ?? null) !== (want.milestone ?? null)) patch.milestone = want.milestone;
-    if (Object.keys(patch).length) fix(`${task.id} #${task.issue}: ${Object.keys(patch).filter(k => k !== 'state_reason').join(', ')} differ${patch.labels ? ` (wanted ${statusLabels[state]})` : ''}`, () => gh(`${repo}/issues/${task.issue}`, 'PATCH', patch));
+    reconcile(task, issue, milestone);
   }
   return problems;
 }
@@ -126,7 +141,8 @@ function sync(manifest, check) {
 if (process.argv[1] && fs.realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
     const [command, ...rest] = process.argv.slice(2);
-    assert(['sync', 'comment'].includes(command), 'Usage: agent-issues.mjs sync [--check] | comment <ID> <file>');
+    const usage = 'Usage: agent-issues.mjs sync [--check | --only <ID>,<ID>] | comment <ID> <file>';
+    assert(['sync', 'comment'].includes(command), usage);
     const manifest = JSON.parse(fs.readFileSync(path.join(root, manifestPath), 'utf8'));
     validateManifest(manifest);
     if (!manifest.repository) {
@@ -138,11 +154,19 @@ if (process.argv[1] && fs.realpathSync(process.argv[1]) === fileURLToPath(import
       gh(`repos/${manifest.repository}/issues/${task.issue}/comments`, 'POST', { body: fs.readFileSync(rest[1], 'utf8') });
       console.log(`Commented on ${task.id} #${task.issue}.`);
     } else {
-      const check = rest.includes('--check');
-      const problems = sync(manifest, check);
+      const check = rest.includes('--check'), at = rest.indexOf('--only');
+      const named = at < 0 ? null : (rest[at + 1] ?? '').split(',').filter(Boolean);
+      assert(!named || !check, '--check compares the whole mirror: it takes no --only');
+      assert(!named || named.length, usage);
+      for (const id of named ?? []) assert(manifest.tasks.some(t => t.id === id), `Unknown task ${id}; use an ID of backlog.json`);
+      // A named task without an issue needs the full sync, which creates the issue and records its number.
+      const targeted = named?.every(id => manifest.tasks.find(t => t.id === id).issue != null);
+      const only = targeted ? manifest.tasks.filter(t => t.issue != null && (named.includes(t.id) || t.depends_on.some(id => named.includes(id)))) : null;
+      const problems = sync(manifest, check, only);
       for (const problem of problems) console.log(`${check ? 'DRIFT' : 'fixed'} ${problem}`);
       assert(!check || !problems.length, `${problems.length} difference(s) between GitHub and the repository. Run: node scripts/agent-local.mjs publish`);
-      console.log(`PASS: ${manifest.tasks.length} issues of ${manifest.repository} match the repository${problems.length ? ` (${problems.length} fixed)` : ''}`);
+      const fixed = problems.length ? ` (${problems.length} fixed)` : '';
+      console.log(only ? `PASS: the issues of ${only.map(t => t.id).join(', ')} in ${manifest.repository} match the repository${fixed}` : `PASS: ${manifest.tasks.length} issues of ${manifest.repository} match the repository${fixed}`);
     }
   } catch (error) { console.error(`FAIL: ${error.message}`); process.exitCode = 1; }
 }

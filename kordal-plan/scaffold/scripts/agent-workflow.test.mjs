@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { section, validateManifest } from './agent-workflow.mjs';
+import { baseBranch, section, validateManifest } from './agent-workflow.mjs';
 
 // validateManifest against an in-memory repository: two tasks, the second
 // depending on the first and owning an ADR.
@@ -35,8 +35,29 @@ test('the manifest names its milestone and integration branch', () => {
   const f = fixture();
   f.manifest.integration_branch = '';
   assert.throws(f.check, /names no integration_branch/);
+  f.manifest.integration_branch = 7;
+  assert.throws(f.check, /names no integration_branch/, 'a branch name is a string');
   f.manifest.integration_branch = 'milestone1'; f.manifest.milestone = undefined;
   assert.throws(f.check, /names no milestone number/);
+});
+test('the base branch is main unless the manifest names another branch, which is not the integration branch', () => {
+  const f = fixture();
+  f.check();
+  assert.equal(baseBranch(f.manifest), 'main', 'a manifest without base_branch keeps working');
+  f.manifest.base_branch = null;
+  f.check();
+  assert.equal(baseBranch(f.manifest), 'main');
+  for (const branch of ['master', 'release/2-x', 'Main', 'release-1.x', 'feature_x']) {
+    f.manifest.base_branch = branch;
+    f.check();
+    assert.equal(baseBranch(f.manifest), branch);
+  }
+  for (const invalid of ['', 'release 1', '-main', '../main', 'a..b', 'main/', 'a//b', 'main.lock', 'main.', 'x;rm', '$(x)', 7, true, ['main']]) {
+    f.manifest.base_branch = invalid;
+    assert.throws(f.check, /Invalid base_branch/, JSON.stringify(invalid));
+  }
+  f.manifest.base_branch = 'milestone1';
+  assert.throws(f.check, /base_branch must differ from integration_branch/);
 });
 test('task IDs, issues and dependencies are well formed and acyclic', () => {
   let f = fixture(); f.tasks[1].id = 'CAP-001';
@@ -86,7 +107,7 @@ test('a completed task has met criteria, a recorded review, completion notes and
   delete f.files[adr];
   assert.throws(f.check, /CAP-002 missing ADR/);
 });
-test('the command fails on an invalid manifest, also when run through a symlink', async t => {
+test('the command fails on an invalid manifest, also when run through a symlink, and passes one that names its base branch', async t => {
   const fs = await import('node:fs'), os = await import('node:os'), path = await import('node:path');
   const { spawnSync } = await import('node:child_process'), { fileURLToPath } = await import('node:url');
   const dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'agent-workflow-')));
@@ -101,4 +122,11 @@ test('the command fails on an invalid manifest, also when run through a symlink'
     assert.equal(result.status, 1, root);
     assert.match(result.stderr, /FAIL: Unsupported manifest version/);
   }
+  // A named base branch is validated and changes nothing in what a pass prints.
+  const check = base_branch => {
+    fs.writeFileSync(path.join(dir, 'project/docs/plans/backlog.json'), JSON.stringify({ version: 1, milestone: 1, integration_branch: 'milestone1', base_branch, tasks: [] }));
+    return spawnSync(process.execPath, [path.join(dir, 'project/scripts/agent-workflow.mjs'), 'check'], { encoding: 'utf8' });
+  };
+  assert.equal(check('master').stdout, 'PASS: 0 task contracts, plans, ADR references and dependency graph\n');
+  assert.match(check('milestone1').stderr, /FAIL: base_branch must differ from integration_branch/);
 });
