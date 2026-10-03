@@ -1057,7 +1057,7 @@ scenario('start in a clone that lacks the integration branch takes it from origi
   const done = f.git('rev-parse', 'milestone1');
   f.git('push', '--quiet', 'origin', 'main', 'milestone1');
   const clone = path.join(f.dir, 'bin/clone');
-  f.git('clone', '--quiet', path.join(f.dir, 'bin/origin.git'), clone);
+  f.git('clone', '--quiet', '--branch', 'main', path.join(f.dir, 'bin/origin.git'), clone);
   const there = args => spawnSync(process.execPath, [path.join(clone, 'scripts/agent-local.mjs'), ...args], { encoding: 'utf8', env: f.env() });
   assert.match(there(['next']).stderr, /The integration branch milestone1 does not exist; create it: node scripts\/agent-local\.mjs start/);
   assert.equal(there(['start']).stdout, `Created milestone1 from origin/milestone1 at ${done}: it holds work that main lacks.\n`);
