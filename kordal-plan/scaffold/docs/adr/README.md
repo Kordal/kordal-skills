@@ -32,4 +32,4 @@ Numbers are never reused. To change a decision, write a new ADR that supersedes 
 ## Consequences
 ```
 
-Planning writes an ADR as Proposed, with the choices still open. Its owning task resolves them, records the alternatives and consequences, renames the section to "Decision" and sets the status to Accepted before implementing dependent behaviour. `make agent-check` requires every ADR of a completed task to be Accepted.
+Planning writes an ADR as Proposed, with the choices still open. Its owning task resolves them, records the alternatives and consequences, renames the section to "Decision" and sets the status to Accepted before implementing dependent behaviour. The structure check (`make structure-check`, part of every task gate) requires every ADR of a completed task to be Accepted.

@@ -1,8 +1,8 @@
-# Agent delivery workflow
+# Task delivery workflow
 
-For a new milestone or a change to its agreed outcome or scope, start with [the planning workflow](planning.md).
+The contract for delivering one planned task, whoever delivers it. Planning is [planning.md](planning.md). The task that completes the queue, a milestone's acceptance task or the last task of a standalone feature, also follows [acceptance.md](acceptance.md), which holds the pull request too.
 
-Delivery is **local**: develop, verify and integrate on the local machine. A task needs no pull request and no reviewer's approval; main receives one pull request, when the whole milestone is done.
+Delivery is **local**: develop, verify and integrate on the local machine. A task needs no pull request and no person's approval: its gate and an independent review stand between it and the integration branch.
 
 ## Sources of truth
 
@@ -12,146 +12,89 @@ Delivery is **local**: develop, verify and integrate on the local machine. A tas
 | Which plan and dependencies belong to a task? | [backlog.json](../plans/backlog.json) |
 | Is work available, claimed or done? | The local repository: `node scripts/agent-local.mjs next` |
 | Why this architecture? | Applicable ADRs in `docs/adr/` |
-| What proves completion? | Plan acceptance criteria, the recorded review and a passed local gate on the task's commits |
+| What proves completion? | Plan acceptance criteria, the recorded review and a passed local gate that covers the task's commits |
 
 The local repository holds the state, and every worktree of it sees the same:
 
-- **Integration branch**, named by `integration_branch` in the manifest: `milestone<N>`, or `feature/<slug>` for a standalone feature. Finished tasks accumulate here. It starts from main and becomes the milestone's pull request. Nobody commits to it directly and no worktree checks it out.
+- **Base branch:** `node scripts/agent-local.mjs base` prints it: `base_branch` of the manifest, `main` without one.
+- **Integration branch**, named by `integration_branch` in the manifest: `milestone<N>`, or `feature/<slug>` for a standalone feature. Finished tasks accumulate here. It starts from the base branch and becomes the milestone's pull request. Nobody commits to it directly and no worktree checks it out.
 - **Done:** the task's completed plan is on the integration branch.
 - **Claimed:** the branch `task/<id>` exists (`task/cap-001`).
 
-## GitHub mirror
-
-A manifest that names a `repository` has a mirror of this state on GitHub; a manifest without one is delivered without GitHub, and the rest of this section does not apply. The repository stays the source of truth: change the plan, never the issue.
-
-- **Integration branch:** `claim` and `finish` push it, so GitHub holds every finished task. A push of this branch starts no hosted check.
-- **Main:** planning pushes it with documents only. A hosted workflow that runs on a push to main ignores `docs/**` and `scripts/agent-*` in its `paths-ignore`, so that it builds and publishes when product code arrives, at the milestone's merge, and not for a plan.
-- **Issues:** one per task, in the GitHub milestone `Milestone <N>`, its body generated from the plan. Each carries one status label, the state `next` shows: `waiting`, `blocked`, `ready`, `in-progress`, `done`. An issue closes when its task is on the integration branch.
-
-[`scripts/agent-issues.mjs`](../../scripts/agent-issues.mjs) keeps the mirror: `claim` and `finish` run its `sync`, which changes only what differs on GitHub. For a task that has no issue yet it creates one and writes the number into the manifest and the plan of the checkout; commit those with the task. `node scripts/agent-issues.mjs sync --check` changes nothing and fails on any difference. When GitHub cannot be reached the local result stands, `next` reports that GitHub is out of sync, and `node scripts/agent-local.mjs publish` repairs it. Task identifiers are not issue numbers.
-
-## Select and claim
-
-1. Read root and applicable nested `AGENTS.md` files.
-2. Run `node scripts/agent-local.mjs next`. It lists every unfinished task as `READY`, `CLAIMED`, `WAIT` (a dependency is not on the integration branch) or `BLOCKED` (the task's `external_blocker`).
-3. Claim one ready task: `node scripts/agent-local.mjs claim <ID>`. The command creates `task/<id>` from the integration branch; Git refuses a second claim. Switch your worktree to that branch.
-4. Read the plan, its ADRs, relevant contracts and the completion notes of its dependencies. Move the plan from `planned/` to `active/`.
+## Deliver one task
 
 One task per branch. A task delivers its backend, contracts, UI and tests together where applicable; split oversized work into explicitly mapped tasks before starting.
 
-## Implement
+1. **Claim.** `node scripts/agent-local.mjs next` lists every unfinished task as `READY`, `CLAIMED`, `WAIT` (a dependency is not integrated) or `BLOCKED` (its `external_blocker`). `node scripts/agent-local.mjs claim <ID>` creates `task/<id>` from the integration branch; Git refuses a second claim. Switch your worktree to that branch; a task already claimed for you is resumed there. Read the plan, its ADRs, relevant contracts, the completion notes of its dependencies and the nested `AGENTS.md` of the directories it changes. Move the plan from `planned/` to `active/`. Done when the worktree is on `task/<id>` and the plan is in `active/`.
+2. **Implement** the plan: its ADRs first, then every acceptance criterion and failure behaviour, with the tests the plan names.
+   - **Decisions.** Resolve Proposed ADRs the task needs and mark them Accepted in the task. Record alternatives and consequences; explicitly supersede affected portions of older decisions. Routine in-scope design choices are yours. Ask only for missing user-owned facts or scope changes, and keep independent work moving. Change the manifest and the plan together if the task contract changes.
+   - **Tests.** Run only what needs nothing started: `make lint` and `make test`. Write the slower tests the plan names (browser, device, end-to-end, measurement) and add their stage to `MILESTONE_STAGES`; they run once, in the acceptance task. A task starts no product, emulator or app build to check itself; the [first look](#first-look) is the one exception. UI rendering alone does not prove persistence, and unit tests alone do not prove cross-component behaviour: that proof is the acceptance task's.
+   - **Budget.** Stay inside the milestone's test budget: the data size and the gate times its scope names. A single step that will run longer than the full gate's budget, such as a load, a measurement or a build, is a reason to stop and ask before it starts.
+   - **Environment.** Give each worktree its own isolated environment (ports, data, a git-ignored `.env`), because other worktrees run their own. Real-source credentials stay outside Git and logs. Record failures and environmental blockers accurately.
 
-Resolve Proposed ADRs the task needs and mark them Accepted in the task. Record alternatives and consequences; explicitly supersede affected portions of older decisions. Routine in-scope design choices are yours. Ask only for missing user-owned facts or scope changes, and keep independent work moving.
+   Done when every criterion and failure behaviour has its code and tests, your own reading of the diff as a reviewer (contracts, migrations, failure paths, permissions, cross-component behaviour) leaves nothing open, and the work is committed.
+3. **Gate.** `node scripts/agent-local.mjs gate` runs the [task gate](#gates). A documentation task needs no gate. Done when it prints that `task-check` passed on the commit.
+4. **Review.** An independent reviewer with a fresh context, one that did not write the change and only reads, reviews the task's diff against the integration branch on two axes. **Standards:** does the change follow `AGENTS.md`, the ADRs and the conventions of the code around it? **Spec:** does it deliver the plan's acceptance criteria and failure behaviour, and nothing outside its scope? Check each finding against the code: fix what you confirm, and record what you reject with the reason. A runtime fix returns to step 3. Done when the plan's Review section records the reviewed commit, who reviewed (the agent and its model), and each finding with what was done about it, or "No findings".
+5. **Complete.** Tick each acceptance criterion the code and its tests deliver, fill the Completion Notes with what changed, deviations and follow-up work, move the plan to `completed/` and commit. Commits after the gate may change documentation only, which keeps its result; a runtime change returns to step 3. Done when the completed plan is committed and `make structure-check` passes: it rejects a pending Review, an unticked criterion and an ADR that is not Accepted.
+6. **Integrate.** `node scripts/agent-local.mjs finish <ID>`, from the task's branch. It refuses a dirty or foreign branch, a missing or unreviewed completed plan, a second task's plan in the same branch, and a runtime change that no passed gate covers. If the integration branch moved meanwhile, merge it into your branch and gate again. Then it fast-forwards the integration branch to your commit and updates the GitHub mirror. A task of [a parallel round](#a-parallel-round) stops after step 5: the round integrates it. Done when `finish` prints that the task is on the integration branch.
+7. **Report.** Give the owner a status update, then select the next task if you were asked to process the queue:
+   - **Added:** what a user can now do, in plain words.
+   - **Verified:** the unit tests that cover the change and the gate result with its commit; and which slower tests the task wrote for the end of the milestone.
+   - **Try it:** the two or three steps by which the owner sees it working.
+   - **Next:** the output of `node scripts/agent-local.mjs next`, and any follow-up recorded in Completion Notes.
 
-Change the manifest and the plan together if the task contract changes.
-
-Iterate with `make lint` and `make test` (nothing running). Stay inside the milestone's test budget: the data size and the gate times its scope names. A single step that will run longer than the full gate's budget, such as a load, a measurement or a build, is a reason to stop and ask before it starts. Give each worktree its own isolated environment (ports, data, a git-ignored `.env`), because other worktrees run their own.
-
-During a task, run only what needs nothing started: lint and the unit tests. Write the slower tests the plan names (browser, device, end-to-end, measurement) and add their stage to `MILESTONE_STAGES`; they run once, in the acceptance task. A task starts no product, emulator or app build to check itself; the [first look](#first-look) is the one exception. UI rendering alone does not prove persistence, and unit tests alone do not prove cross-component behaviour: that proof is the acceptance task's. Record failures and environmental blockers accurately. Real-source credentials stay outside Git and logs.
-
-## Gate and integrate
-
-No independent reviewer follows you: the gate and the review are what stands between the task and the integration branch.
-
-1. Commit the work, then run the gate through the helper, which records a pass for that commit:
-
-   ```bash
-   node scripts/agent-local.mjs gate
-   ```
-
-   It runs `make task-check`, the fast gate. A failed gate records nothing.
-2. Review the task's diff against the integration branch with a fresh context, as a reviewer who did not write it, on two axes. **Standards:** does the change follow `AGENTS.md`, the ADRs and the conventions of the code around it? **Spec:** does it deliver the plan's acceptance criteria and failure behaviour, and nothing outside its scope? Fix every confirmed finding; a runtime fix needs the gate again. Record in the plan's Review section the reviewed commit, who reviewed (the agent and its model), and each finding with what was done about it, or "No findings". `make agent-check` rejects a completed plan whose Review is pending.
-3. Tick each acceptance criterion the code and its tests deliver, fill the Completion Notes and move the plan to `completed/`. Commits after the gate may change documentation only; a runtime change needs the gate again. [`scripts/agent-scope.mjs`](../../scripts/agent-scope.mjs) holds that rule.
-4. Integrate:
-
-   ```bash
-   node scripts/agent-local.mjs finish <ID>
-   ```
-
-   It refuses a dirty or foreign branch, a missing or unreviewed completed plan, a second task's plan in the same branch, and a runtime change without a covering gate. If the integration branch moved meanwhile, merge it into your branch and gate again. Then it fast-forwards the integration branch to your commit and updates the GitHub mirror.
-
-A documentation task needs no gate.
-
-## Report
-
-After every `finish`, give the owner a status update, then select the next task if you were asked to process the queue:
-
-- **Added:** what a user can now do, in plain words.
-- **Verified:** the unit tests that cover the change and the gate result with its commit; and which slower tests the task wrote for the end of the milestone.
-- **Try it:** the two or three steps by which the owner sees it working.
-- **Next:** the output of `node scripts/agent-local.mjs next`, and any follow-up recorded in Completion Notes.
-
-With a GitHub mirror, post the same update on the task's issue: write it to a file outside the repository and run `node scripts/agent-issues.mjs comment <ID> <file>`.
-
-## First look
-
-The first task of a milestone that changes what a user sees ends with a stop. After its status update, leave the product running on every device the milestone targets, tell the owner how to reach it, and wait: the owner looks at the real thing before the rest is built on it. Record the owner's answer under "First look" in `docs/product/milestone<N>.md`, with the task and the date. A change the owner asks for is a change of scope: plan it before the queue continues.
+   With a GitHub mirror, post the same update on the task's issue: write it to a file outside the repository and run `node scripts/agent-issues.mjs comment <ID> <file>`. Done when the owner has the update and the issue carries it.
 
 ## Gates
 
-| Gate | When | Stages |
-| --- | --- | --- |
-| `make task-check` | every task, before `finish` | `TASK_STAGES` of the Makefile: lint, the agent structure check and the tests that run in a minute or two with nothing started |
-| `make pr-check` | once, by the task that completes the queue: the acceptance task, or the last task of a standalone feature | The task gate, then `MILESTONE_STAGES`: the slow suites, such as a clean bootstrap, acceptance, contracts and browser tests |
-| `make premerge-check` | once, with the full gate | `RESILIENCE_STAGES` of the Makefile: operations, backup/restore, upgrade, build and verification of the release artifacts |
+Run a gate through the helper, on a committed, clean tree: `node scripts/agent-local.mjs gate [task-check|pr-check|premerge-check]` records the result for the commit, a failed gate records nothing, and integration checks the record.
 
-A gate stage is a make target; a task that adds a kind of check adds its stage, to the task gate when it is fast and to the milestone stages when it is slow. `finish` refuses the task that completes the queue without a passed `pr-check`, so the slow suites run once per milestone and never per task. What they find is fixed as a task of its own. The price is known and accepted: a task can break what only a slow test shows, and the acceptance task is where that surfaces. A new repository has no product checks: `make test` fails until the first runtime task puts its tests there, and `make premerge-check` fails until a task gives it stages. Each gate prints the duration of every stage, also after a failure.
+| Gate | Stages | When |
+| --- | --- | --- |
+| `task-check`, the task gate | `TASK_STAGES` of the Makefile: lint, the structure check (`make structure-check`) and the tests that run in a minute or two with nothing started | every task that changes a runtime file, before it is integrated |
+| `pr-check`, the full gate | `MILESTONE_STAGES` only: the slow suites, such as a clean bootstrap, acceptance, contracts and browser tests. The helper first makes sure a task gate covers the commit, running it when none does | once, by the task that completes the queue: the acceptance task, or the last task of a standalone feature |
+| `premerge-check`, the resilience gate | `RESILIENCE_STAGES`: operations, backup/restore, upgrade, build and verification of the release artifacts | once, with the full gate |
+
+- **Reuse.** A recorded gate covers every later commit until a runtime file changes: `gate` then runs nothing and says `reused` (`--force` runs it anyway). So the Review, the Completion Notes and the owner's test document, committed after a gate, keep its result. [`scripts/agent-scope.mjs`](../../scripts/agent-scope.mjs) holds which files are runtime, and which are agent tooling.
+- **Stages.** A stage is a make target. A task that adds a kind of check adds its stage: to `TASK_STAGES` when it is fast, to `MILESTONE_STAGES` when it is slow. A gate without stages fails, as the full and the resilience gate of a new repository do; the single word `none` (`RESILIENCE_STAGES := none`) declares it not applicable, which passes and is recorded as such. `make test` fails likewise until the first runtime task puts its tests there.
+- **Agent tooling.** `make agent-check`, the structure check plus the tests of the agent tooling itself, is no stage of a task. `gate` runs it first when the branch changes that tooling; the hosted check `Agent structure` runs it on the pull request; run it by hand after a scaffold update.
+- **The end of the queue.** `finish` refuses the task that completes the queue unless a `pr-check` and a `premerge-check`, passed or not applicable, cover its commit and its branch contains the base branch. What the slow suites find is fixed as a task of its own. The price is known and accepted: a task can break what only a slow test shows, and the acceptance task is where that surfaces.
+- **Durations.** A gate prints the duration of every stage, also after a failure, and the helper says when it ran over its budget in the manifest: tell the owner; a slow stage of the task gate belongs in `MILESTONE_STAGES`.
+
+## A parallel round
+
+`READY` tasks that touch different files are delivered side by side, by one session that runs the round:
+
+1. **Claim** the round in one command, `node scripts/agent-local.mjs claim <ID> <ID>...`, so that every branch starts from the same revision of the integration branch.
+2. **Place** each task in a worktree of its own: `git worktree add ../<project>.worktrees/<id> task/<id>`.
+3. **Deliver** each task there by [Deliver one task](#deliver-one-task) up to step 5: its completed plan committed on its branch.
+4. **Integrate** from the session's own checkout, on a clean tree: `node scripts/agent-local.mjs integrate <ID> <ID>...`. All or nothing: it makes the checks of `finish` for every task, merges the branches without touching a worktree, runs one combined task gate on the assembled commit when more than one task changed runtime files, then advances the integration branch in one atomic step and updates GitHub once. The combined gate checks the assembled commit out in that checkout and returns the checkout to where it was.
+5. **Report** every task as step 7 says and remove the worktrees: `git worktree remove ../<project>.worktrees/<id>`.
+
+A round that cannot be integrated moves nothing and says why; its tasks are then integrated serially, each with `finish` from its own branch. After a conflict, which names the task and the files, integrate the other tasks, then merge the integration branch into the conflicting one, gate and `finish` it. After a failed combined gate, finish the tasks one at a time to find the one that breaks the others.
+
+A round never completes the queue: the last task is delivered on its own, through `finish` and the full gates. A project whose task gate needs something shared, such as a fixed port or one database, is delivered serially.
 
 ## Add a task during delivery
 
-A task found during delivery (a review finding, a failure the owner reports, a split of oversized work) is added in the checkout that will deliver it: write its plan from the template, add it to the manifest, and `claim` it. With a GitHub mirror the claim creates its issue and writes the number into the manifest and the plan. Switch to its branch and commit the plan and the manifest there with the work.
+A task found during delivery (a review finding, a failure the owner reports, a split of oversized work) is added in the checkout that will deliver it: write its plan from the [template](../plans/template.md), add it to the manifest, and `claim` it. With a GitHub mirror the claim creates its issue and writes the number into the manifest and the plan. Switch to its branch and commit the plan and the manifest there with the work.
 
-## The acceptance task
+## First look
 
-The last task of every milestone is its acceptance task. It depends on every other task and delivers `docs/product/milestone<N>-test.md`. Claim it like any task; its branch holds the whole milestone. It runs in four parts.
+The first task of a milestone that changes what a user sees is delivered on its own, outside a parallel round, and ends with a stop. After its status update, leave the product running on every device the milestone targets, tell the owner how to reach it, and wait: the owner looks at the real thing before the rest is built on it. Record the owner's answer under "First look" in `docs/product/milestone<N>.md`, with the task and the date. A change the owner asks for is a change of scope: plan it before the queue continues.
 
-### Full check
+## GitHub mirror
 
-Everything the tasks did not run, once, on the whole milestone:
+A manifest that names a `repository` has a mirror of this state on GitHub; one without is delivered without GitHub, and the rest of this section does not apply. The repository stays the source of truth: change the plan, never the issue.
 
-1. `node scripts/agent-local.mjs gate pr-check` and `node scripts/agent-local.mjs gate premerge-check`: every slow suite, the ones the tasks wrote included.
-2. Start the product and walk every task's Flow as a user would, on each device the milestone targets: the journeys and their failure paths.
+- **Integration branch:** `claim`, `finish` and `integrate` push it, so GitHub holds every finished task. A push of this branch starts no hosted check.
+- **Base branch:** planning pushes it with documents only. A hosted workflow that runs on a push to the base branch ignores `docs/**` and `scripts/agent-*` in its `paths-ignore`, so that it builds and publishes when product code arrives, at the milestone's merge, and not for a plan.
+- **Issues:** one per task, in the GitHub milestone `Milestone <N>`, its body generated from the plan. Each carries one status label, the state `next` shows: `waiting`, `blocked`, `ready`, `in-progress`, `done`. An issue closes when its task is on the integration branch. Task identifiers are not issue numbers.
 
-Each failure becomes a task, delivered through this workflow; then merge the integration branch into the acceptance branch and run the failed part again. Done when both gates pass and every Flow has been walked on the current head.
+[`scripts/agent-issues.mjs`](../../scripts/agent-issues.mjs) keeps the mirror, changing only what differs. `claim`, `finish` and `integrate` update, once per command, only the issues they affect: the tasks they name and those that depend on them directly. `node scripts/agent-local.mjs publish` reconciles everything: the labels, the GitHub milestone and every issue. `node scripts/agent-issues.mjs sync --check` changes nothing and fails on any difference. A task that has no issue yet gets one, its number written into the manifest and the plan of the checkout; commit those with the task.
 
-### Milestone review
+When GitHub cannot be reached, or `--no-publish` deferred the update, the local result stands and a marker in the Git directory records it: `next` reports that GitHub is out of sync until `publish` succeeds.
 
-Review the whole milestone before the owner tests it: the diff from main to this branch, on the same two axes as a task. Standards now covers how the tasks fit together: duplicated logic, inconsistent naming and interfaces between tasks, a decision one task made and another ignored. Spec is every acceptance scenario of `docs/product/milestone<N>.md` against the assembled product.
+## Timings
 
-Grade each confirmed finding. **High:** a wrong result, lost data or a security hole. **Medium:** an acceptance scenario not met, or a defect on a path users reach. **Low:** names, comments, duplication, documentation. High and medium findings become tasks, delivered through this workflow; low findings are listed under "Follow-up" in the test document for the owner to decide.
-
-After the fix tasks, merge the integration branch into the acceptance branch and review once more: only the diff of those fix tasks, not the milestone again. Done when that review has no high or medium finding; record both reviews, with their commits and findings, in the "Review" section that opens the test document.
-
-### Owner acceptance
-
-Write the rest of `docs/product/milestone<N>-test.md`:
-
-- how to start the product from this branch;
-- a checklist in journey order, built from the acceptance scenarios of the milestone's scope and the "Try it" steps of every task: what to do, and what the owner should see;
-- the failure cases to try;
-- what cannot be tested by hand, and why.
-
-Start the product, hand the owner the list and stop. Each failure the owner reports becomes a task; when it is finished, merge the integration branch, update the checklist and hand it back. Done when the owner says the milestone passes and the test document records that with the date and the tested commit. After the owner's test only documentation may change on this branch: a runtime change is a new commit for the owner to test.
-
-### Finish
-
-`finish`. It demands a passed `pr-check` on what the owner tested: after a fix task merged since the full check, run both gates again first.
-
-## A standalone feature
-
-A feature planned while nothing else is in progress has its own integration branch, `feature/<slug>`, and no separate acceptance task: its last task carries the acceptance. On that task's branch, after its review:
-
-1. Run the full check as the acceptance task does: both full gates, then walk the feature's Flows in the running product. Review the whole feature, the diff from main, where the feature has more than one task; record it in the task's Review.
-2. Write `docs/product/feature-<slug>-test.md`: how to start the product from this branch, a checklist of what to do and what the owner should see, and the failure cases to try. Start the product, hand the owner the list and stop.
-3. Fix what the owner reports on this branch and gate again. When the owner says the feature passes, record that in the test document with the date and the tested commit, run `node scripts/agent-local.mjs gate pr-check`, and `gate premerge-check` where that gate has stages, and `finish`.
-
-## Open the pull request when the work is done
-
-When `next` lists nothing and the test document, `docs/product/milestone<N>-test.md` or `docs/product/feature-<slug>-test.md`, records the owner's acceptance, and for a milestone its review:
-
-1. With a GitHub mirror, run `node scripts/agent-issues.mjs sync --check`: the mirror matches before the pull request names its issues.
-2. Open one pull request from the integration branch, which `finish` has pushed, to main, with Summary and Merge Danger; the Summary lists every task with its issue.
-3. The hosted check `Agent structure` runs `make agent-check` on it. A failed, missing, cancelled or skipped check is not a pass.
-4. Report the pull request and the state of its checks to the owner, who merges it.
-
-Without a GitHub mirror, the owner decides how main receives the integration branch.
+The helper logs every claim, gate, integration and publication with its duration in the Git directory: local, never pushed, and no step measures itself. `node scripts/agent-local.mjs timings` prints where the time went: per task from claim to integration, then the combined, the full and the resilience gates with their stages, and GitHub publication. Print it after a round or a finished queue.

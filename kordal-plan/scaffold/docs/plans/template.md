@@ -12,7 +12,7 @@
 
 ## Task Contract
 
-<!-- This task's entry in backlog.json: stable ID/title/slug, issue, dependencies, ADR paths. `make agent-check` compares the lines below with the manifest: the issue as #<number>, written here by scripts/agent-issues.mjs, and the depends_on IDs in manifest order, separated by ", ". -->
+<!-- This task's entry in backlog.json: stable ID/title/slug, issue, dependencies, ADR paths. The structure check (`make structure-check`, part of every task gate) compares the lines below with the manifest: the issue as #<number>, written here by scripts/agent-issues.mjs, and the depends_on IDs in manifest order, separated by ", ". -->
 
 Issue: none
 
