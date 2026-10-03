@@ -6,6 +6,9 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
+// A hook or `git rebase --exec` exports these: the fixtures' Git would then write into the caller's repository.
+for (const name of ['GIT_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE', 'GIT_PREFIX', 'GIT_COMMON_DIR', 'GIT_OBJECT_DIRECTORY', 'GIT_ALTERNATE_OBJECT_DIRECTORIES', 'GIT_NAMESPACE', 'GIT_CEILING_DIRECTORIES']) delete process.env[name];
+
 // The real labels.sh against a fake gh in a temporary directory: it logs the
 // arguments of every call as one JSON line, answers `label list` with the
 // names its state file holds, one per line as `--jq '.[].name'` prints them,
@@ -25,6 +28,7 @@ if (verb === 'list') {
   const at = args.indexOf('--limit'), shown = labels.slice(0, at < 0 ? 30 : Number(args[at + 1]));
   if (shown.length) console.log(shown.join('\\n'));
 } else {
+  fs.readFileSync(0); // a gh that reads its standard input must not eat the rest of the label list
   if (labels.some(label => label.toLowerCase() === name.toLowerCase())) { console.error('label with name "' + name + '" already exists'); process.exit(1); }
   fs.writeFileSync(GH_LABELS, JSON.stringify([...labels, name]));
   console.log('https://github.com/owner/repo/labels/' + name);
@@ -106,6 +110,12 @@ test('takes a label that differs only in case as existing, as GitHub does', t =>
   assert.deepEqual(f.creates().map(args => args[2]), states.filter(name => !['needs-review', 'duplicate'].includes(name)));
 });
 
+test('takes only a whole name as existing, not a label that contains it', t => {
+  const f = fixture(t, ['needs-review-ext', 'not-a-duplicate']);
+  const result = f.run();
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(f.creates().map(args => args[2]), states);
+});
 test('fails and creates nothing when gh cannot list the labels', t => {
   const f = fixture(t, []);
   const result = f.run({ GH_FAIL: 'list' });

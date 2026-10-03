@@ -18,10 +18,12 @@ help: ## Show available commands
 check: syntax test smoke ## Everything, as CI runs it: the shell syntax, every test, the bootstrap smoke test
 
 # bash -n runs nothing: it finds the syntax error of a branch no test reaches,
-# and on macOS the construct that bash 3.2 does not know.
+# and on macOS the construct that bash 3.2 does not know. Of the dot
+# directories only .github is the repository's: an agent's worktrees under
+# .claude/ are not.
 .PHONY: syntax
 syntax: ## Parse every shell script of the repository (bash -n)
-	@scripts=$$(find . -name .git -prune -o -type f -name '*.sh' -print | LC_ALL=C sort); \
+	@scripts=$$(find . -type d \( -name '.?*' ! -name .github -o -name node_modules \) -prune -o -type f -name '*.sh' -print | LC_ALL=C sort); \
 	[ -n "$$scripts" ] || { echo "FAIL  no shell script found: not the repository root, or find failed"; exit 1; }; \
 	printf '%s\n' "$$scripts" | { status=0; while IFS= read -r script; do \
 		if bash -n "$$script"; then echo "ok    $${script#./}"; else echo "FAIL  $${script#./}"; status=1; fi; \

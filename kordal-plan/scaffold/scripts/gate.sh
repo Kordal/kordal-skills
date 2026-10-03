@@ -4,6 +4,11 @@
 #
 #   - a stage is a make target; the first stage that fails stops the gate, and
 #     the gate exits with that stage's status;
+#   - a stage that make has nothing to run for fails: a target without a
+#     recipe, or one that is not .PHONY beside a file or directory of its name,
+#     would pass without checking anything. make is asked first, in question
+#     mode (-q), in which a recipe line that starts with "+" or names $(MAKE)
+#     still runs: a stage is a .PHONY target with a plain recipe;
 #   - a gate with no stages fails (exit 2): an empty stage list is a gate that
 #     nobody decided on. The single word `none` declares the gate not
 #     applicable: nothing runs, it is reported as n/a and exits 0. `none`
@@ -21,13 +26,14 @@
 # Usage: gate.sh <gate name> <make target>...
 #        gate.sh <gate name> none
 # GATE_MAKE is the make to run (default: make). The gate name and the stages
-# are make targets of letters, digits, ".", "_" and "-": anything else is
-# rejected (exit 2) rather than written into a broken report.
+# are make targets of letters, digits, ".", "_" and "-", not starting with "-",
+# which make would take for an option: anything else is rejected (exit 2)
+# rather than run or written into a broken report.
 set -uo pipefail
 
 # A make target, and safe inside JSON as it stands. The subshell keeps
 # LC_ALL=C, under which a range is ASCII in every locale, away from the stages.
-valid_name() { (LC_ALL=C; case $1 in '' | *[!a-zA-Z0-9_.-]*) exit 1 ;; esac); }
+valid_name() { (LC_ALL=C; case $1 in '' | -* | *[!a-zA-Z0-9_.-]*) exit 1 ;; esac); }
 
 if ! valid_name "${1:-}"; then
 	echo 'Usage: gate.sh <gate name> <make target>... (or the single word none); a name is letters, digits, ".", "_" and "-"'
@@ -117,6 +123,8 @@ report() {
 trap report EXIT
 trap 'status=130; exit 130' INT
 trap 'status=143; exit 143' TERM
+trap 'status=131; exit 131' QUIT
+trap 'status=129; exit 129' HUP
 
 # A stage list that is no decision: nothing runs, the gate fails, and the
 # report names no stage (an invalid name would break the JSON).
@@ -147,8 +155,13 @@ for stage in "${stages[@]}"; do
 	printf '\n== %s: stage %s\n' "$gate" "$stage"
 	running=$stage
 	running_start=$(date +%s)
-	"$make_cmd" "$stage"
-	code=$?
+	if "$make_cmd" -q "$stage" >/dev/null 2>&1; then
+		printf 'gate.sh: make has nothing to run for %s: it has no recipe, or a file or directory of that name exists and the target is not .PHONY\n' "$stage"
+		code=1
+	else
+		"$make_cmd" "$stage"
+		code=$?
+	fi
 	running=""
 	durations+=($(($(date +%s) - running_start)))
 	if [ "$code" -ne 0 ]; then

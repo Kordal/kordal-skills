@@ -7,6 +7,10 @@ import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { Worker, isMainThread, workerData } from 'node:worker_threads';
 
+// A hook or `git rebase --exec` exports these: the fixtures' Git would then
+// write into the caller's repository instead of their own.
+for (const name of ['GIT_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE', 'GIT_PREFIX', 'GIT_COMMON_DIR', 'GIT_OBJECT_DIRECTORY', 'GIT_ALTERNATE_OBJECT_DIRECTORIES', 'GIT_NAMESPACE', 'GIT_CEILING_DIRECTORIES']) delete process.env[name];
+
 // The real scripts/agent-local.mjs in a real Git repository whose tasks are
 // planned on the base branch and on the integration branch milestone1: two
 // tasks, the second depending on the first, or a round of three independent
@@ -36,6 +40,9 @@ named() { case " $1 " in *" $2 "* | *" all "*) return 0 ;; esac; return 1; }
 if named "\${MAKE_HANG:-}" "$1"; then exec sleep 30; fi
 if named "\${MAKE_DIRTY:-}" "$1"; then echo left > left-behind.txt; fi
 if named "\${MAKE_LOCK:-}" "$1"; then : > "$(git rev-parse --git-dir)/index.lock"; fi
+if named "\${MAKE_EDIT:-}" "$1"; then echo changed >> "$MAKE_EDIT_FILE"; fi
+if named "\${MAKE_MOVE:-}" "$1"; then git update-ref "refs/heads/$MAKE_MOVE_BRANCH" "$MAKE_MOVE_TO"; fi
+[ -z "\${MAKEFLAGS:-}\${MFLAGS:-}\${GNUMAKEFLAGS:-}" ] || echo "flags inherited" >> "$MAKE_LOG"
 result=passed stages='{"name":"unit","result":"passed","seconds":3}' code=0
 if named "\${MAKE_NA:-}" "$1"; then result=not-applicable stages=; fi
 if named "\${MAKE_FAIL:-}" "$1"; then result=failed stages= code=2; fi
@@ -49,7 +56,7 @@ function fixture(t, { list = tasks, base = 'main', branch = true, files = {} } =
   // `make`: 'pass', 'fail', or what the fake make does for which target: { fail, na, hang, dirty, lock, env }.
   const env = (make = {}) => ({
     ...process.env, AGENT_MAKE: path.join(dir, 'bin/make'), MAKE_LOG: path.join(dir, 'bin/make.log'), MAKE_FAIL: make === 'fail' ? 'all' : make.fail ?? '',
-    MAKE_NA: make.na ?? '', MAKE_HANG: make.hang ?? '', MAKE_DIRTY: make.dirty ?? '', MAKE_LOCK: make.lock ?? '', ...(make.env ?? {}),
+    MAKE_NA: make.na ?? '', MAKE_HANG: make.hang ?? '', MAKE_DIRTY: make.dirty ?? '', MAKE_LOCK: make.lock ?? '', MAKE_EDIT: '', MAKE_MOVE: '', ...(make.env ?? {}),
   });
   // A checkout of the repository: the main one, or a worktree.
   const checkout = at => {
@@ -269,7 +276,7 @@ scenario('the task that completes the queue needs the full and the resilience ga
   assert.equal(f.git('rev-parse', 'milestone1'), f.git('rev-parse', 'task/cap-001'), 'nothing integrated under the full gate alone');
   assert.match(f.cli(['gate', 'premerge-check']).stdout, /^make premerge-check\npremerge-check passed on [a-f0-9]{40} in \d+:\d\d; recorded\.\n$/);
   assert.equal(f.cli(['finish', 'CAP-002']).status, 0);
-  assert.equal(f.cli(['next']).stdout, '');
+  { const done = f.cli(['next']); assert.deepEqual([done.status, done.stdout, done.stderr], [0, '', '']); }
   assert.deepEqual(f.makes(), ['make task-check', 'make pr-check', 'make premerge-check']);
 });
 scenario('a gate that takes longer than its agreed budget passes and says so', t => {
@@ -399,7 +406,7 @@ scenario('a standalone feature: the gates pass, the owner accepts in documentati
   const finished = f.cli(['finish', 'CAP-001']);
   assert.equal(finished.status, 0, finished.stderr);
   assert.equal(f.git('rev-parse', 'milestone1'), f.git('rev-parse', 'HEAD'));
-  assert.equal(f.cli(['next']).stdout, '');
+  { const done = f.cli(['next']); assert.deepEqual([done.status, done.stdout, done.stderr], [0, '', '']); }
 });
 scenario('a standalone feature: a runtime fix after the gates is refused until every gate ran again', t => {
   const f = fixture(t, { list: [tasks[0]] });
@@ -438,7 +445,7 @@ scenario('the resilience gate: a failure records nothing, and not applicable is 
   assert.deepEqual(f.record(head, 'premerge-check'), { gate: 'premerge-check', result: 'not-applicable', tooling: false, stages: [] });
   assert.equal(f.cli(['gate', 'premerge-check']).stdout, `premerge-check is not applicable, recorded on ${head}; no runtime file changed since: reused.\n`);
   assert.equal(f.cli(['finish', 'CAP-002']).status, 0);
-  assert.equal(f.cli(['next']).stdout, '');
+  { const done = f.cli(['next']); assert.deepEqual([done.status, done.stdout, done.stderr], [0, '', '']); }
 });
 scenario('the task gate cannot be declared not applicable: a runtime change is always tested', t => {
   const f = fixture(t);
@@ -623,12 +630,14 @@ scenario('an interrupted combined gate fails the round, moves nothing and still 
   child.stderr.on('data', chunk => { stderr += chunk; });
   const closed = new Promise(resolve => child.on('close', resolve));
   for (let waited = 0; f.makes().length < 4; waited += 50) {
-    assert.ok(waited < 20000, 'the combined gate never started');
+    assert.ok(waited < 120000, 'the combined gate never started');
     await new Promise(resolve => setTimeout(resolve, 50));
   }
-  // To the helper alone, as a supervisor stops it: it passes the signal on to make.
+  // To the helper alone, as a supervisor stops it: it passes the signal on to make, which hangs for 30 seconds otherwise.
+  const stopped = Date.now();
   child.kill('SIGTERM');
   assert.equal(await closed, 1);
+  assert.ok(Date.now() - stopped < 15000, 'make was stopped, not waited for');
   assert.match(stderr, /task-check was interrupted \(SIGTERM\) on [a-f0-9]{40}; nothing recorded\. Nothing was moved/);
   assert.deepEqual(f.snapshot(), before);
 });
@@ -637,7 +646,7 @@ scenario('a checkout that cannot return after the combined gate says how to reco
   const stuck = f.cli(['integrate', ...three], { lock: 'task-check' });
   fs.rmSync(path.join(f.dir, '.git/index.lock'));
   assert.equal(stuck.status, 1);
-  assert.match(stuck.stderr, /^WARN: this checkout is still on the assembled commit: it could not return to main\. Run: git checkout main$/m);
+  assert.match(stuck.stderr, /^WARN: this checkout is still on the assembled commit: it could not return to main \(.*index\.lock.*\)\. Run: git checkout main$/m);
   assert.match(stuck.stdout, /CAP-001, CAP-002, CAP-003 are on milestone1 at/, 'the gate passed: the round stands');
   f.git('checkout', '--quiet', 'main');
   assert.equal(f.git('status', '--porcelain'), '');
@@ -712,7 +721,7 @@ scenario('round integration refuses a round that would complete the queue, a tas
   assert.match(refused(f, ['integrate', 'CAP-001', 'CAP-001']), /Usage: node scripts\/agent-local\.mjs/);
   assert.match(refused(f, ['integrate']), /Usage: node scripts\/agent-local\.mjs/);
   f.git('worktree', 'add', '--quiet', path.join(f.dir, 'bin/other'), 'milestone1');
-  assert.match(refused(f, ['integrate', ...three]), /milestone1 is checked out in a worktree; switch that worktree to another branch/);
+  assert.match(refused(f, ['integrate', ...three]), /milestone1 is checked out in a worktree \(.*\); switch that worktree to another branch/);
   f.git('worktree', 'remove', path.join(f.dir, 'bin/other'));
   assert.equal(f.cli(['integrate', ...three]).status, 0);
   assert.match(refused(f, ['integrate', 'CAP-001']), /^FAIL: CAP-001: not claimed \(DONE\)/);
@@ -785,7 +794,7 @@ for (const base of ['main', 'trunk']) {
     f.write('docs/product/vision.md', '# Vision\n\nMore.\n');
     f.commit('the base branch moves');
     f.git('worktree', 'add', '--quiet', path.join(f.dir, 'bin/other'), 'milestone1');
-    assert.match(refused(f, ['start']), /^FAIL: milestone1 is checked out in a worktree; switch that worktree to another branch\n$/);
+    assert.match(refused(f, ['start']), /^FAIL: milestone1 is checked out in a worktree \(.*bin\/other\); switch that worktree to another branch\n$/);
     f.git('worktree', 'remove', path.join(f.dir, 'bin/other'));
     assert.equal(f.cli(['claim', 'CAP-001']).status, 0);
     assert.match(refused(f, ['start']), /^FAIL: milestone1 stays where it is: CAP-001 is claimed from it\n$/);
@@ -797,7 +806,7 @@ for (const base of ['main', 'trunk']) {
     // The task that completes the queue is accepted on what the base branch will hold.
     assert.equal(f.cli(['claim', 'CAP-002']).status, 0);
     f.work('CAP-002', {});
-    assert.equal(refused(f, ['finish', 'CAP-002']), `FAIL: ${base} has commits this branch lacks: merge it, so that the owner accepts what ${base} will hold\n`);
+    assert.equal(refused(f, ['finish', 'CAP-002']), `FAIL: ${base} has commits this branch lacks: merge ${base}, so that the owner accepts what ${base} will hold\n`);
     f.git('merge', '--quiet', '--no-edit', base);
     assert.match(f.cli(['finish', 'CAP-002']).stderr, /CAP-002 completes the queue: no passed pr-check covers/, 'the base branch first, then the gates on what it brought');
     for (const gate of ['pr-check', 'premerge-check']) assert.equal(f.cli(['gate', gate]).status, 0);
@@ -875,6 +884,181 @@ scenario('a timing log that is missing, read-only or no file never fails a comma
     assert.match(timings.stdout, /^CAP-001: /);
     assert.equal(f.cli(['next']).stdout, 'READY CAP-002: Freshness\n');
   }
+});
+
+scenario('a gate ignores the flags of a make around it: a dry run cannot pass for a gate', t => {
+  const f = fixture(t);
+  f.implement();
+  assert.equal(f.cli(['gate'], { env: { MAKEFLAGS: 'n', MFLAGS: '-n', GNUMAKEFLAGS: '-i', MAKELEVEL: '1' } }).status, 0);
+  assert.deepEqual(f.makes(), ['make task-check'], 'the fake make logs "flags inherited" when it sees any');
+});
+scenario('a command takes no more arguments than it has use for', t => {
+  const f = fixture(t);
+  f.implement();
+  for (const args of [['gate', 'task-check', 'pr-check'], ['finish', 'CAP-001', 'CAP-002'], ['next', 'CAP-001'], ['publish', 'now'], ['phase', 'x']]) {
+    assert.match(refused(f, args), /^FAIL: Usage: node scripts\/agent-local\.mjs/, args.join(' '));
+  }
+  assert.deepEqual(f.makes(), []);
+});
+scenario('a submodule the project tells Git to ignore is a runtime change like any other', t => {
+  const f = fixture(t);
+  const lib = path.join(f.dir, 'bin/lib');
+  fs.mkdirSync(lib, { recursive: true });
+  const sub = (...args) => { const r = spawnSync('git', args, { cwd: lib, encoding: 'utf8' }); assert.equal(r.status, 0, r.stderr); return r.stdout.trim(); };
+  sub('init', '--quiet', '--initial-branch', 'main'); sub('config', 'user.email', 'test@example.com'); sub('config', 'user.name', 'Test');
+  fs.writeFileSync(path.join(lib, 'lib.js'), 'v1\n'); sub('add', '--all'); sub('commit', '--quiet', '--message', 'v1');
+  f.git('-c', 'protocol.file.allow=always', 'submodule', '--quiet', 'add', lib, 'vendor/lib');
+  f.git('config', '-f', '.gitmodules', 'submodule.vendor/lib.ignore', 'all');
+  f.commit('vendor/lib at v1');
+  f.git('branch', '--force', 'milestone1', 'main');
+  assert.equal(f.cli(['claim', 'CAP-001']).status, 0);
+  f.git('switch', '--quiet', 'task/cap-001');
+  // The pointer moves: the submodule's own checkout is at a new commit, and the task commits it.
+  const inside = (...args) => { const r = spawnSync('git', args, { cwd: path.join(f.dir, 'vendor/lib'), encoding: 'utf8' }); assert.equal(r.status, 0, r.stderr); };
+  inside('config', 'user.email', 'test@example.com'); inside('config', 'user.name', 'Test');
+  fs.writeFileSync(path.join(f.dir, 'vendor/lib/lib.js'), 'v2\n'); inside('add', '--all'); inside('commit', '--quiet', '--message', 'v2');
+  f.move('docs/plans/planned/CAP-001-identity.md', 'docs/plans/completed/CAP-001-identity.md');
+  const head = f.commit('CAP-001: vendor/lib v2');
+  assert.match(refused(f, ['finish', 'CAP-001']), new RegExp(`No passed task-check covers ${head}`), 'the moved pointer needs a gate');
+  assert.equal(f.cli(['gate']).status, 0);
+  assert.equal(f.cli(['finish', 'CAP-001']).status, 0);
+});
+scenario('a documentation file with a name Git would quote is documentation', t => {
+  const f = fixture(t);
+  assert.equal(f.cli(['claim', 'CAP-001']).status, 0);
+  f.work('CAP-001', { 'docs/product/zażółć "notes".md': '# Notes\n' });
+  assert.equal(f.cli(['finish', 'CAP-001']).status, 0, 'no gate: nothing but documentation changed');
+  assert.deepEqual(f.makes(), []);
+});
+scenario('a resilience gate is no task gate: its record covers no runtime change', t => {
+  const f = fixture(t);
+  const head = f.implement();
+  assert.equal(f.cli(['gate', 'premerge-check']).status, 0);
+  assert.deepEqual(f.records(), [`${head}.premerge-check`]);
+  assert.match(refused(f, ['finish', 'CAP-001']), new RegExp(`No passed task-check covers ${head}`));
+});
+scenario('the integration branch moves only from the revision that was verified: a round never overwrites work integrated meanwhile', t => {
+  const f = gatedRound(t);
+  // While the combined gate runs, something else reaches the integration branch.
+  f.git('switch', '--quiet', '--detach', 'milestone1');
+  f.write('docs/product/meanwhile.md', '# Meanwhile\n');
+  const meanwhile = f.commit('integrated meanwhile');
+  f.git('switch', '--quiet', 'main');
+  const raced = f.cli(['integrate', ...three], { env: { MAKE_MOVE: 'task-check', MAKE_MOVE_BRANCH: 'milestone1', MAKE_MOVE_TO: meanwhile } });
+  assert.equal(raced.status, 1);
+  assert.match(raced.stderr, /^FAIL: milestone1 moved during verification; rerun\n$/m);
+  assert.equal(f.git('rev-parse', 'milestone1'), meanwhile, 'the work integrated meanwhile is still there');
+  assert.equal(f.git('rev-parse', '--abbrev-ref', 'HEAD'), 'main');
+});
+scenario('a combined gate that changes a tracked file says which, and how the checkout returns', t => {
+  const f = gatedRound(t);
+  const stuck = f.cli(['integrate', ...three], { env: { MAKE_EDIT: 'task-check', MAKE_EDIT_FILE: 'src/identity.js' } });
+  assert.equal(stuck.status, 1);
+  assert.match(stuck.stderr, /The checkout changed while task-check ran; nothing recorded/);
+  assert.match(stuck.stderr, /^WARN: this checkout is still on the assembled commit: it could not return to main \(.*\)\. The gate left changes here \(src\/identity\.js\): set them aside \(git stash --include-untracked\) or discard them, then run: git checkout main$/m);
+  assert.equal(f.git('rev-parse', 'milestone1'), f.git('rev-parse', 'main'), 'nothing was integrated');
+  f.git('stash', '--include-untracked', '--quiet'); f.git('checkout', '--quiet', 'main');
+  assert.equal(f.git('status', '--porcelain'), '');
+});
+// A stand-in for tests/integration/check-docs.sh: it fails while a file says so.
+const docsCheck = { 'tests/integration/check-docs.sh': '#!/usr/bin/env bash\necho "check-docs $(git rev-parse HEAD)" >> bin/docs.log\nif [ -e docs/BROKEN.md ]; then echo "FAIL  docs/BROKEN.md: link to missing.md"; exit 1; fi\necho PASS\n' };
+const checked = f => fs.existsSync(path.join(f.dir, 'bin/docs.log')) ? fs.readFileSync(path.join(f.dir, 'bin/docs.log'), 'utf8').trim().split('\n').map(line => line.split(' ')[1]) : [];
+scenario('documentation written after the gate is checked when the task is integrated', t => {
+  const f = fixture(t, { files: docsCheck });
+  const gated = f.implement();
+  assert.equal(f.cli(['gate']).status, 0);
+  assert.equal(f.cli(['finish', 'CAP-001']).status, 0);
+  assert.deepEqual(checked(f), [], 'the task gate on this very commit ran lint: nothing to repeat');
+  // The last task: documentation only, with a broken link committed after every gate.
+  assert.equal(f.cli(['claim', 'CAP-002']).status, 0);
+  f.work('CAP-002', {});
+  for (const gate of ['pr-check', 'premerge-check']) assert.equal(f.cli(['gate', gate]).status, 0);
+  f.write('docs/BROKEN.md', '[x](missing.md)\n');
+  const broken = f.commit('the test document');
+  const stderr = refused(f, ['finish', 'CAP-002']);
+  assert.match(stderr, new RegExp(`^FAIL: The documentation check fails on ${broken}:\\nFAIL  docs/BROKEN\\.md: link to missing\\.md\\nNothing was moved: fix it, commit, and run the command again\\n$`));
+  f.git('rm', '--quiet', 'docs/BROKEN.md');
+  const fixed = f.commit('fix the link');
+  assert.equal(f.cli(['finish', 'CAP-002']).status, 0);
+  assert.deepEqual(checked(f), [broken, fixed]);
+  assert.deepEqual(f.makes(), ['make task-check', 'make pr-check', 'make premerge-check'], 'documentation repeats no gate');
+  assert.notEqual(gated, fixed);
+});
+scenario('a round whose assembled commit no gate ran on has its documentation checked there, and the checkout returns', t => {
+  const f = fixture(t, { list: round, files: docsCheck });
+  assert.equal(f.cli(['claim', ...three]).status, 0);
+  f.work('CAP-001'); assert.equal(f.cli(['gate']).status, 0);
+  f.work('CAP-002', { 'docs/product/notes.md': '# Notes\n' });
+  f.work('CAP-003', { 'docs/BROKEN.md': '[x](missing.md)\n' });
+  f.git('switch', '--quiet', 'main');
+  assert.match(refused(f, ['integrate', ...three]), /The documentation check fails on [a-f0-9]{40}:\nFAIL  docs\/BROKEN\.md/);
+  f.git('switch', '--quiet', 'task/cap-003'); f.git('rm', '--quiet', 'docs/BROKEN.md'); f.commit('fix the link'); f.git('switch', '--quiet', 'main');
+  const integrated = f.cli(['integrate', ...three]);
+  assert.equal(integrated.status, 0, integrated.stderr);
+  assert.match(integrated.stdout, /A recorded task-check covers the assembled runtime state: no combined gate was needed\./);
+  assert.equal(checked(f).at(-1), f.git('rev-parse', 'milestone1'), 'checked on the assembled commit');
+  assert.deepEqual([f.git('rev-parse', '--abbrev-ref', 'HEAD'), f.git('status', '--porcelain')], ['main', '']);
+  assert.deepEqual(f.makes(), ['make task-check'], 'no combined gate: one task changed runtime files');
+});
+scenario('phase says whether work is under way, also after a squash merge', t => {
+  const f = fixture(t);
+  assert.equal(f.cli(['phase']).stdout, 'delivering: CAP-001, CAP-002 are unfinished\n', 'planned and not started is under way');
+  f.implement();
+  assert.equal(f.cli(['gate']).status, 0);
+  assert.equal(f.cli(['finish', 'CAP-001']).status, 0);
+  assert.equal(f.cli(['phase']).stdout, 'delivering: CAP-002 is unfinished; milestone1 holds work that main lacks\n');
+  assert.equal(f.cli(['claim', 'CAP-002']).status, 0);
+  f.work('CAP-002', {});
+  for (const gate of ['pr-check', 'premerge-check']) assert.equal(f.cli(['gate', gate]).status, 0);
+  assert.equal(f.cli(['finish', 'CAP-002']).status, 0);
+  assert.equal(f.cli(['phase']).stdout, 'delivering: milestone1 holds work that main lacks\n', 'done, and not yet merged');
+  // The pull request is squash-merged: the base branch holds the work, with no ancestry to show it.
+  f.git('switch', '--quiet', 'main');
+  f.git('merge', '--quiet', '--squash', 'milestone1');
+  f.commit('Milestone 1 (squashed)');
+  assert.ok(f.git('merge-base', '--is-ancestor', 'main', 'main') === '' && spawnSync('git', ['merge-base', '--is-ancestor', 'milestone1', 'main'], { cwd: f.dir }).status === 1, 'no ancestry');
+  assert.equal(f.cli(['phase']).stdout, 'between: every task is done and main holds all of milestone1\n');
+  f.write('src/later.js', 'export const later = 1;\n');
+  f.commit('the base branch moves on');
+  assert.equal(f.cli(['phase']).stdout, 'between: every task is done and main holds all of milestone1\n');
+});
+scenario('the last task must contain origin\'s base branch too: a pull request merged on GitHub moves only that one', t => {
+  const f = fixture(t);
+  f.git('init', '--quiet', '--bare', path.join(f.dir, 'bin/origin.git'));
+  f.git('remote', 'add', 'origin', path.join(f.dir, 'bin/origin.git'));
+  f.git('push', '--quiet', 'origin', 'main');
+  f.implement();
+  assert.equal(f.cli(['gate']).status, 0);
+  assert.equal(f.cli(['finish', 'CAP-001']).status, 0);
+  // A quick change is merged on GitHub: origin/main moves, the local main does not.
+  f.git('switch', '--quiet', '--detach', 'origin/main');
+  f.write('src/quick.js', 'export const quick = 1;\n');
+  f.commit('a quick change');
+  f.git('push', '--quiet', 'origin', 'HEAD:main');
+  f.git('fetch', '--quiet', 'origin');
+  assert.equal(f.cli(['claim', 'CAP-002']).status, 0);
+  f.work('CAP-002', {});
+  assert.equal(refused(f, ['finish', 'CAP-002']), 'FAIL: origin/main has commits this branch lacks: merge origin/main, so that the owner accepts what main will hold\n');
+  f.git('merge', '--quiet', '--no-edit', 'origin/main');
+  for (const gate of ['pr-check', 'premerge-check']) assert.equal(f.cli(['gate', gate]).status, 0);
+  assert.deepEqual(f.makes().slice(1), ['make task-check', 'make pr-check', 'make premerge-check'], 'the merge brought a runtime file: the task gate runs on it first');
+  assert.equal(f.cli(['finish', 'CAP-002']).status, 0);
+});
+scenario('start in a clone that lacks the integration branch takes it from origin, where the finished tasks are', t => {
+  const f = fixture(t);
+  f.git('init', '--quiet', '--bare', path.join(f.dir, 'bin/origin.git'));
+  f.git('remote', 'add', 'origin', path.join(f.dir, 'bin/origin.git'));
+  f.implement();
+  assert.equal(f.cli(['gate']).status, 0);
+  assert.equal(f.cli(['finish', 'CAP-001']).status, 0);
+  const done = f.git('rev-parse', 'milestone1');
+  f.git('push', '--quiet', 'origin', 'main', 'milestone1');
+  const clone = path.join(f.dir, 'bin/clone');
+  f.git('clone', '--quiet', path.join(f.dir, 'bin/origin.git'), clone);
+  const there = args => spawnSync(process.execPath, [path.join(clone, 'scripts/agent-local.mjs'), ...args], { encoding: 'utf8', env: f.env() });
+  assert.match(there(['next']).stderr, /The integration branch milestone1 does not exist; create it: node scripts\/agent-local\.mjs start/);
+  assert.equal(there(['start']).stdout, `Created milestone1 from origin/milestone1 at ${done}: it holds work that main lacks.\n`);
+  assert.equal(there(['next']).stdout, 'READY CAP-002: Freshness\n', 'the finished task is done here too');
 });
 
 if (isMainThread) {

@@ -16,6 +16,9 @@ import { needsGate, toolingChange } from './agent-scope.mjs';
 //              no runtime file;
 //   - timed:   <git dir>/agent-timings.jsonl logs every claim, gate,
 //              integration and publication, for `timings`.
+// Documentation needs no gate and keeps one, so no gate has seen what was
+// written after it: `finish` and `integrate` run the documentation check on
+// what they integrate.
 // A manifest that names a GitHub repository gets a mirror of that state:
 // `claim`, `finish` and `integrate` push the integration branch and sync the
 // issues they affect, once per command; `publish` reconciles everything.
@@ -24,6 +27,7 @@ const self = 'node scripts/agent-local.mjs';
 const usage = `Usage: ${self} <command>
   next                                  the queue: every unfinished task as READY, CLAIMED, WAIT or BLOCKED
   base                                  the base branch: base_branch of the manifest, main without one
+  phase                                 delivering (a task is unfinished, or the integration branch holds work the base lacks) or between
   start                                 create the integration branch from the base branch, or fast-forward an unclaimed one to it
   claim <ID>... [--no-publish]          claim READY tasks: a branch task/<id> each, from one revision of the integration branch
   gate [task-check|pr-check|premerge-check] [--force]
@@ -32,7 +36,9 @@ const usage = `Usage: ${self} <command>
   integrate <ID>... [--no-publish]      integrate a round of claimed tasks in one step, from any clean checkout
   publish                               push the integration branch and reconcile every issue
   timings                               where the time went: per task, per gate, per publication`;
-const options = { next: [], base: [], start: [], claim: ['--no-publish'], gate: ['--force'], finish: ['--no-publish'], integrate: ['--no-publish'], publish: [], timings: [] };
+const options = { next: [], base: [], phase: [], start: [], claim: ['--no-publish'], gate: ['--force'], finish: ['--no-publish'], integrate: ['--no-publish'], publish: [], timings: [] };
+// The most arguments a command takes beside its options; claim and integrate take any number.
+const arity = { next: 0, base: 0, phase: 0, start: 0, gate: 1, finish: 1, publish: 0, timings: 0 };
 // task-check gates every runtime change. pr-check, the full gate, and
 // premerge-check, the resilience gate, gate the task that completes the queue.
 // A pr-check is recorded only where a task-check covers the same runtime
@@ -46,8 +52,10 @@ const planPath = (task, phase) => `docs/plans/${phase}/${task.id}-${task.slug}.m
 const taskBranch = task => `task/${task.id.toLowerCase()}`;
 const tipOf = branch => tryGit('rev-parse', '--verify', '--quiet', `refs/heads/${branch}`);
 const isAncestor = (older, newer) => tryGit('merge-base', '--is-ancestor', older, newer) !== null;
-const changed = (from, to) => git('diff', '--name-only', '--no-renames', from, to).split('\n').filter(Boolean);
-const clean = (dir = root) => !git('-C', dir, 'status', '--porcelain');
+// Every path that differs, to the byte of its name, and a submodule the
+// project tells Git to ignore included: a moved pointer is a runtime change.
+const changed = (from, to) => run('diff', '--name-only', '--no-renames', '--ignore-submodules=none', '-z', from, to).split('\0').filter(Boolean);
+const clean = (dir = root) => !git('-C', dir, 'status', '--porcelain', '--ignore-submodules=none');
 // A file as a commit holds it, to the last byte; null where it holds none.
 const show = (rev, file) => { try { return run('show', `${rev}:${file}`); } catch { return null; } };
 const clock = seconds => {
@@ -148,7 +156,9 @@ function runMake(target) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-gate-')), file = path.join(dir, 'report.json'), started = Date.now();
   return new Promise(resolve => {
     const signals = ['SIGINT', 'SIGTERM', 'SIGHUP'];
-    const child = spawn(process.env.AGENT_MAKE ?? 'make', [target], { cwd: root, stdio: 'inherit', env: { ...process.env, GATE_REPORT: file } });
+    // A dry run or an ignore-errors flag inherited from an outer make would pass a gate that ran nothing.
+    const { MAKEFLAGS, MFLAGS, GNUMAKEFLAGS, MAKELEVEL, ...outside } = process.env;
+    const child = spawn(process.env.AGENT_MAKE ?? 'make', [target], { cwd: root, stdio: 'inherit', env: { ...outside, GATE_REPORT: file } });
     let interrupted = null, settled = false;
     const pass = signal => { interrupted = signal; child.kill(signal); };
     const settle = status => {
@@ -161,7 +171,8 @@ function runMake(target) {
       if (report?.gate !== target || !Array.isArray(report.stages)) report = null;
       const passed = status === 0 && !interrupted && report?.result !== 'failed';
       resolve({
-        at: new Date(started).toISOString(), seconds: Math.round((Date.now() - started) / 1000), interrupted,
+        // The gate's own clock where it reports one: its stages then add up to it.
+        at: new Date(started).toISOString(), seconds: Number.isInteger(report?.seconds) && report.seconds >= 0 ? report.seconds : Math.round((Date.now() - started) / 1000), interrupted,
         result: !passed ? 'failed' : report?.result === 'not-applicable' ? 'not-applicable' : 'passed',
         stages: (report?.stages ?? []).map(({ name, result, seconds }) => ({ name, result, seconds })),
       });
@@ -251,11 +262,29 @@ function verifyTask(manifest, task, base, head, round) {
 // branch: the owner accepts what the base branch will hold after the merge.
 // The base branch comes first: merging it is what the gates then run on.
 function verifyLast(manifest, task, head) {
+  // Both, each where it exists: a pull request merged on GitHub moves origin's
+  // base branch only. The remote-tracking ref is as fresh as the last fetch.
   const base = baseBranch(manifest);
-  assert(!tipOf(base) || isAncestor(`refs/heads/${base}`, head), `${base} has commits this branch lacks: merge it, so that the owner accepts what ${base} will hold`);
+  for (const [ref, name] of [[`refs/heads/${base}`, base], [`refs/remotes/origin/${base}`, `origin/${base}`]]) {
+    assert(!tryGit('rev-parse', '--verify', '--quiet', ref) || isAncestor(ref, head), `${name} has commits this branch lacks: merge ${name}, so that the owner accepts what ${base} will hold`);
+  }
   for (const name of ['pr-check', 'premerge-check']) assert(covering(head, [name]), `${task.id} completes the queue: no passed ${name} covers ${head}. Run: ${self} gate ${name}`);
 }
-const assertFree = branch => assert(!worktrees().some(w => w.branch === branch), `${branch} is checked out in a worktree; switch that worktree to another branch`);
+const assertFree = branch => {
+  const held = worktrees().find(w => w.branch === branch);
+  assert(!held, held && (fs.existsSync(held.dir)
+    ? `${branch} is checked out in a worktree (${held.dir}); switch that worktree to another branch`
+    : `${branch} is checked out in a worktree whose directory is gone (${held.dir}); run: git worktree prune`));
+};
+// The documentation check, on the checked-out commit that is about to be
+// integrated. A task gate on that very commit ran it as part of lint; a
+// project that removed the script has nothing to run.
+const docsCheck = 'tests/integration/check-docs.sh';
+function checkDocs(sha) {
+  if (readRecord(sha, 'task-check') || !fs.existsSync(path.join(root, docsCheck))) return;
+  const result = spawnSync('bash', [docsCheck], { cwd: root, encoding: 'utf8' });
+  assert(result.status === 0, `The documentation check fails on ${sha}:\n${`${result.stderr}${result.stdout}`.trim()}\nNothing was moved: fix it, commit, and run the command again`);
+}
 // The integration branch moves in one compare-and-swap, only from the
 // revision that was verified, and never under a worktree that holds it.
 function advance(manifest, base, head, ids) {
@@ -268,12 +297,18 @@ function advance(manifest, base, head, ids) {
 function start(manifest) {
   const integration = manifest.integration_branch, base = baseBranch(manifest), from = tipOf(base), tip = tipOf(integration);
   assert(from, `The base branch ${base} does not exist in this repository; name the project's base branch as base_branch in backlog.json`);
+  // A clone that lacks the branch origin holds: the finished tasks are there, not on the base branch.
+  const remote = tip ? null : tryGit('rev-parse', '--verify', '--quiet', `refs/remotes/origin/${integration}`);
+  if (remote && !isAncestor(remote, from)) {
+    assert(tryGit('update-ref', '-m', `agent-local: start from origin/${integration}`, `refs/heads/${integration}`, remote, '') !== null, `${integration} changed meanwhile; rerun`);
+    return console.log(`Created ${integration} from origin/${integration} at ${remote}: it holds work that ${base} lacks.`);
+  }
   if (tip === from) return console.log(`${integration} is at ${base} (${from}): nothing to do.`);
   // An integration branch that exists follows the base branch only while it
   // is nothing but an older revision of it that no task started from.
   if (tip) {
     assert(isAncestor(tip, from), `${integration} stays where it is: it holds work that ${base} lacks`);
-    const claimed = manifest.tasks.filter(task => stateOf(manifest, task).state === 'CLAIMED').map(task => task.id);
+    const claimed = manifest.tasks.filter(task => stateOf(manifest, task).state === 'CLAIMED' && isAncestor(tip, tipOf(taskBranch(task)))).map(task => task.id);
     assert(!claimed.length, `${integration} stays where it is: ${claimed.join(', ')} ${claimed.length > 1 ? 'are' : 'is'} claimed from it`);
     assertFree(integration);
   }
@@ -287,6 +322,10 @@ function claim(manifest, ids, defer) {
     const { state, detail } = stateOf(manifest, task);
     assert(state === 'READY', `${task.id} is not ready: ${state}${detail ? ` (${detail})` : ''}`);
   }
+  // The claim of a task without an issue creates it and writes its number into
+  // this checkout, to be committed on the task's branch: one task, one checkout.
+  const unmirrored = manifest.repository && tasks.length > 1 ? tasks.filter(task => task.issue == null).map(task => task.id) : [];
+  assert(!unmirrored.length, `${unmirrored.join(', ')} ${unmirrored.length > 1 ? 'have' : 'has'} no issue yet: claim ${unmirrored.length > 1 ? 'each' : 'it'} on its own, in the checkout that delivers it, and commit the issue number on its branch`);
   // Creating the branch is the claim: Git refuses a second one. One
   // transaction creates every branch of a round, from one revision, or none.
   const tip = git('rev-parse', `refs/heads/${integration}`);
@@ -305,32 +344,33 @@ function finish(manifest, id, defer) {
   const base = git('rev-parse', `refs/heads/${integration}`), head = git('rev-parse', 'HEAD');
   verifyTask(manifest, task, base, head, false);
   if (manifest.tasks.every(t => t.id === task.id || stateOf(manifest, t).state === 'DONE')) verifyLast(manifest, task, head);
+  checkDocs(head);
   advance(manifest, base, head, [task.id]);
   console.log(`${task.id} is on ${integration} at ${head}. ${mirror(manifest, [task.id], defer)}`);
 }
 
-// The proof that the runtime changes of a round work together: the task gate
-// on the assembled commit, checked out detached in this checkout. The checkout
-// always returns to where it was, also after a failure or a signal, which is
-// held back until it has. Git would overwrite an ignored file of this checkout
-// that the assembled commit tracks: that checkout is refused instead.
-async function combinedGate(manifest, acc, tooling) {
+// The assembled commit of a round, checked out detached in this checkout for
+// as long as `prove` runs on it. The checkout always returns to where it was,
+// also after a failure or a signal, which is held back until it has. Git would
+// overwrite an ignored file of this checkout that the assembled commit tracks:
+// that checkout is refused instead.
+async function onAssembled(acc, prove) {
+  if (git('rev-parse', 'HEAD') === acc) return prove();
   const origin = tryGit('symbolic-ref', '--quiet', '--short', 'HEAD') ?? git('rev-parse', 'HEAD');
   const signals = ['SIGINT', 'SIGTERM', 'SIGHUP'], hold = () => {};
   for (const signal of signals) process.on(signal, hold);
-  console.log(`No recorded task-check covers the assembled commit ${acc}: running one combined task-check on it. This checkout returns to ${origin} afterwards.`);
+  const reason = stderr => String(stderr).split('\n').map(line => line.trim()).filter(line => line && !/^(Please|Aborting)/.test(line)).join(' ');
   try {
     try { git('checkout', '--quiet', '--no-overwrite-ignore', '--detach', acc); } catch (error) {
-      const why = String(error.stderr).split('\n').filter(line => !/^(Please|Aborting)/.test(line)).join(' ').replace(/\s+/g, ' ').trim();
-      throw new Error(`The assembled commit ${acc} could not be checked out here (${why}). Nothing was moved: clear the way, or finish the tasks one at a time (${self} finish <ID>, from each branch)`);
+      throw new Error(`The assembled commit ${acc} could not be checked out here (${reason(error.stderr)}). Nothing was moved: clear the way, or finish the tasks one at a time (${self} finish <ID>, from each branch)`);
     }
-    await taskGate(manifest, acc, tooling, true).catch(error => {
-      throw new Error(`${error.message}. Nothing was moved: finish the tasks one at a time (${self} finish <ID>, from each branch) to find the one that breaks the others`);
-    });
+    return await prove();
   } finally {
-    if (tryGit('checkout', '--quiet', origin, '--') === null) {
+    const back = spawnSync('git', ['checkout', '--quiet', origin, '--'], { cwd: root, encoding: 'utf8' });
+    if (back.status !== 0) {
       process.exitCode = 1;
-      console.error(`WARN: this checkout is still on the assembled commit: it could not return to ${origin}. Run: git checkout ${origin}`);
+      const left = (tryGit('status', '--porcelain') ?? '').split('\n').filter(Boolean).map(line => line.trim().replace(/^\S+\s+/, ''));
+      console.error(`WARN: this checkout is still on the assembled commit: it could not return to ${origin} (${reason(back.stderr)}).${left.length ? ` The gate left changes here (${left.join(', ')}): set them aside (git stash --include-untracked) or discard them, then run: git checkout ${origin}` : ` Run: git checkout ${origin}`}`);
     }
     for (const signal of signals) process.off(signal, hold);
   }
@@ -385,15 +425,39 @@ async function integrate(manifest, named, defer) {
   // own gate does where only that task changed runtime files.
   const files = changed(base, acc), tooling = toolingChange(files);
   let proof = 'No runtime file changed: no gate was needed.';
-  if (needsGate(files)) {
-    proof = 'A recorded task-check covers the assembled runtime state: no combined gate was needed.';
-    if (!covering(acc, taskGates, tooling)) {
-      await combinedGate(manifest, acc, tooling);
-      proof = 'One combined task-check passed on it.';
-    }
+  if (needsGate(files) && !covering(acc, taskGates, tooling)) {
+    // The proof that the runtime changes of the round work together: the task gate on the assembled commit.
+    console.log(`No recorded task-check covers the assembled commit ${acc}: running one combined task-check on it, in this checkout, which returns to where it is afterwards.`);
+    await onAssembled(acc, () => taskGate(manifest, acc, tooling, true).catch(error => {
+      throw new Error(`${error.message}. Nothing was moved: finish the tasks one at a time (${self} finish <ID>, from each branch) to find the one that breaks the others`);
+    }));
+    proof = 'One combined task-check passed on it.';
+  } else {
+    if (needsGate(files)) proof = 'A recorded task-check covers the assembled runtime state: no combined gate was needed.';
+    // No gate ran on the assembled commit: its documentation is checked on its own.
+    if (files.some(file => file.endsWith('.md')) && !readRecord(acc, 'task-check') && show(acc, docsCheck) !== null) await onAssembled(acc, () => checkDocs(acc));
   }
   advance(manifest, base, acc, ids);
   console.log(`${ids.join(', ')} ${ids.length > 1 ? 'are' : 'is'} on ${integration} at ${acc}. ${proof} ${mirror(manifest, ids, defer)}`);
+}
+
+// Whether work is under way: an unfinished task of the manifest, or an
+// integration branch that holds work the base branch lacks. Ancestry cannot
+// tell after a squash or a rebase merge, so the test is a merge: when merging
+// the integration branch into the base branch changes nothing, the base holds
+// all of it. One answer for every skill that asks whether a milestone is in
+// progress.
+function phase(manifest) {
+  const integration = manifest.integration_branch, base = baseBranch(manifest), tip = tipOf(integration);
+  const from = tipOf(base) ?? tryGit('rev-parse', '--verify', '--quiet', `refs/remotes/origin/${base}`);
+  const open = manifest.tasks.filter(task => stateOf(manifest, task).state !== 'DONE').map(task => task.id);
+  let ahead = false;
+  if (tip && from && !isAncestor(tip, from)) {
+    const merge = spawnSync('git', ['merge-tree', '--write-tree', '--no-messages', from, tip], { cwd: root, encoding: 'utf8' });
+    ahead = merge.status !== 0 || String(merge.stdout).split('\n')[0] !== git('rev-parse', `${from}^{tree}`);
+  }
+  const why = [open.length && `${open.join(', ')} ${open.length > 1 ? 'are' : 'is'} unfinished`, ahead && `${integration} holds work that ${base} lacks`].filter(Boolean);
+  console.log(why.length ? `delivering: ${why.join('; ')}` : `between: every task is done and ${base} holds all of ${integration}`);
 }
 
 // Where the time of this manifest's tasks went, from the log alone: no step
@@ -444,9 +508,10 @@ async function main() {
   const [command = 'next', ...rest] = process.argv.slice(2);
   if (['help', '--help', '-h'].includes(command)) return console.log(usage);
   const flags = rest.filter(arg => arg.startsWith('--')), args = rest.filter(arg => !arg.startsWith('--'));
-  assert(Object.hasOwn(options, command) && flags.every(flag => options[command].includes(flag)), usage);
+  assert(Object.hasOwn(options, command) && flags.every(flag => options[command].includes(flag)) && !(args.length > arity[command]), usage);
   const manifest = load(), integration = manifest.integration_branch, defer = flags.includes('--no-publish');
   if (command === 'base') return console.log(baseBranch(manifest));
+  if (command === 'phase') return phase(manifest);
   if (command === 'start') return start(manifest);
   assert(tipOf(integration), `The integration branch ${integration} does not exist; create it: ${self} start`);
   if (command === 'next') {

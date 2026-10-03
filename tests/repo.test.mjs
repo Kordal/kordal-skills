@@ -6,6 +6,9 @@ import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
+// A hook or `git rebase --exec` exports these: the fixtures' Git would then write into the caller's repository.
+for (const name of ['GIT_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE', 'GIT_PREFIX', 'GIT_COMMON_DIR', 'GIT_OBJECT_DIRECTORY', 'GIT_ALTERNATE_OBJECT_DIRECTORIES', 'GIT_NAMESPACE', 'GIT_CEILING_DIRECTORIES']) delete process.env[name];
+
 // This repository against itself. The skills, the agents, the scaffold and the
 // README name each other's commands, files, sections, make targets and flags,
 // and no script fails when such a name goes stale: an agent then follows an
@@ -169,6 +172,16 @@ test('the routing is one text: the README and the scaffold\'s AGENTS.md hold the
   const rule = (file, heading) => sectionOf(file, heading).filter(line => /^(QUICK → FEATURE → MILESTONE|During an active milestone)/.test(line));
   assert.equal(rule('README.md', '## Which command').length, 2, 'README.md: "Which command" lacks the ladder sentence or the paragraph "During an active milestone"');
   assert.deepEqual(rule('README.md', '## Which command'), rule(guide, '## How work enters'), `README.md "Which command" and ${guide} "How work enters" word the ladder or the active milestone differently`);
+});
+test('/kordal-quick keeps its twelve conditions and what it does not create, and the README repeats both', () => {
+  const conditions = ['one coherent, localized change', 'the requirement is already clear', 'follows an existing implementation pattern', 'no new architecture decision or ADR', 'no database or schema migration', 'no authentication, authorization or permission change', 'no change to how sensitive data is handled', 'no new production dependency', 'no infrastructure, deployment or CI change', 'no public API or durable contract change', 'no destructive operation', 'no uncertainty that materially changes product behaviour'];
+  const creates = 'It creates no milestone, backlog task, GitHub issue, task plan, Mermaid flow, summary page, integration branch or approval gate, and it merges nothing.';
+  const skill = skillFile('kordal-quick');
+  const ticked = sectionOf(skill, '## 1. Qualify').filter(line => line.startsWith('- [ ] ')).map(line => line.slice(6));
+  assert.deepEqual(ticked, conditions, `${skill}: the checklist of "1. Qualify" is not the twelve conditions of QUICK`);
+  const listed = sectionOf('README.md', '## A quick change').filter(line => line.startsWith('- ')).flatMap(line => line.slice(2).replace(/[.;]$/, '').split('; ')).map(item => item.replace(/^it /, ''));
+  assert.ok(same(listed, conditions), `README.md: "A quick change" lists ${listed.length} conditions that are not the twelve of ${skill}: ${listed.join(' | ')}`);
+  for (const file of [skill, 'README.md']) assert.ok(read(file).includes(creates), `${file}: no longer says what QUICK does not create ("${creates}")`);
 });
 test('the README\'s table of what a project gets covers every scaffold file, and names nothing the scaffold lacks', () => {
   const rows = tableOf('README.md', '## What a project gets').map(([paths, contents]) => ({ paths: spans(paths), contents: spans(contents) }));
@@ -360,9 +373,10 @@ test('every make target a document, a skill, an agent or a workflow names is a t
     }
   }
   assert.ok(found >= 20, `only ${found} make targets were read from the Markdown files`);
-  for (const [file, known] of [[`${scaffold}/.github/workflows/agent-workflow.yml`, project], ['.github/workflows/ci.yml', repository]]) {
+  // The hosted checks run exactly these: the tooling tests and the documentation check of a project's pull request, and everything here.
+  for (const [file, known, steps] of [[`${scaffold}/.github/workflows/agent-workflow.yml`, project, ['- run: make agent-check', '- run: bash tests/integration/check-docs.sh']], ['.github/workflows/ci.yml', repository, ['- run: make check']]]) {
     const run = [...read(file).matchAll(/^\s*- run: make ([a-z][a-z-]*)$/gm)].map(match => match[1]);
-    assert.ok(run.length > 0, `${file}: it runs no make target`);
+    assert.deepEqual(read(file).split('\n').filter(line => /^\s*- run: /.test(line)).map(line => line.trim()), steps, `${file}: it runs ${steps.join(' and ')}, and nothing else`);
     for (const target of run) if (!known.includes(target)) problems.push(`${file}: it runs \`make ${target}\`, which is no target of the Makefile beside it`);
   }
   none(problems, 'A file names a make target that does not exist (renamed or removed?)');

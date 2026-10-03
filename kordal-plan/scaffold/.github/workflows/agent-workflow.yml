@@ -25,5 +25,8 @@ jobs:
       # one pull request carries the milestone (docs/agents/acceptance.md,
       # "Open the pull request"). The agent tooling's own tests run here on
       # every pull request; locally only a branch that changes the tooling
-      # runs them (docs/agents/workflow.md, "Gates").
+      # runs them (docs/agents/workflow.md, "Gates"). Documentation needs no
+      # gate, so its check runs here once more, on everything the pull
+      # request holds.
       - run: make agent-check
+      - run: bash tests/integration/check-docs.sh

@@ -77,8 +77,9 @@ const normal = text => (text ?? '').replace(/\r\n/g, '\n').trim();
 
 // `only` is the targeted sync: these tasks, each against its own issue. It
 // reconciles what a change of state changes (the state, the status label and
-// the body) and leaves the title and the GitHub milestone, which need the
-// lists, to the full sync.
+// the body) and the title, and leaves the GitHub milestone, which needs a
+// list, to the full sync: an issue that is in no milestone yet makes the sync
+// a full one.
 function sync(manifest, check, only) {
   const repo = `repos/${manifest.repository}`;
   const problems = [];
@@ -94,7 +95,7 @@ function sync(manifest, check, only) {
       milestone: state === 'DONE' && issue.milestone ? issue.milestone.number : milestone,
     };
     const patch = {};
-    if (!only && issue.title !== want.title) patch.title = want.title;
+    if (issue.title !== want.title) patch.title = want.title;
     if (normal(issue.body) !== normal(want.body)) patch.body = want.body;
     if (issue.state !== want.state) Object.assign(patch, { state: want.state }, want.state === 'closed' ? { state_reason: 'completed' } : {});
     if (JSON.stringify(issue.labels.map(l => l.name).sort()) !== JSON.stringify(want.labels)) patch.labels = want.labels;
@@ -102,8 +103,17 @@ function sync(manifest, check, only) {
     if (Object.keys(patch).length) fix(`${task.id} #${task.issue}: ${Object.keys(patch).filter(k => k !== 'state_reason').join(', ')} differ${patch.labels ? ` (wanted ${statusLabels[state]})` : ''}`, () => gh(`${repo}/issues/${task.issue}`, 'PATCH', patch));
   };
   if (only) {
-    for (const task of only) reconcile(task, gh(`${repo}/issues/${task.issue}`));
-    return problems;
+    // The issues API answers for a pull request too, and would rewrite and close it.
+    const live = only.map(task => {
+      const issue = gh(`${repo}/issues/${task.issue}`);
+      assert(!issue.pull_request, `${task.id}: #${task.issue} is a pull request of ${manifest.repository}, not an issue`);
+      return [task, issue];
+    });
+    if (live.every(([, issue]) => issue.milestone)) {
+      for (const [task, issue] of live) reconcile(task, issue);
+      return problems;
+    }
+    only = null;
   }
 
   const labels = new Set(list(`${repo}/labels`).map(l => l.name));
@@ -155,12 +165,13 @@ if (process.argv[1] && fs.realpathSync(process.argv[1]) === fileURLToPath(import
       console.log(`Commented on ${task.id} #${task.issue}.`);
     } else {
       const check = rest.includes('--check'), at = rest.indexOf('--only');
+      assert(rest.every((arg, i) => arg === '--check' || arg === '--only' || (at >= 0 && i === at + 1)), usage);
       const named = at < 0 ? null : (rest[at + 1] ?? '').split(',').filter(Boolean);
       assert(!named || !check, '--check compares the whole mirror: it takes no --only');
       assert(!named || named.length, usage);
       for (const id of named ?? []) assert(manifest.tasks.some(t => t.id === id), `Unknown task ${id}; use an ID of backlog.json`);
-      // A named task without an issue needs the full sync, which creates the issue and records its number.
-      const targeted = named?.every(id => manifest.tasks.find(t => t.id === id).issue != null);
+      // A task without an issue needs the full sync, which creates the issue and records its number.
+      const targeted = named && manifest.tasks.every(t => t.issue != null);
       const only = targeted ? manifest.tasks.filter(t => t.issue != null && (named.includes(t.id) || t.depends_on.some(id => named.includes(id)))) : null;
       const problems = sync(manifest, check, only);
       for (const problem of problems) console.log(`${check ? 'DRIFT' : 'fixed'} ${problem}`);

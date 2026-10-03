@@ -7,12 +7,17 @@ import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { needsGate, toolingChange } from './agent-scope.mjs';
 
+// A hook or `git rebase --exec` exports these: a Git that a stage runs would then work on the caller's repository.
+for (const name of ['GIT_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE', 'GIT_PREFIX', 'GIT_COMMON_DIR', 'GIT_OBJECT_DIRECTORY', 'GIT_ALTERNATE_OBJECT_DIRECTORIES', 'GIT_NAMESPACE', 'GIT_CEILING_DIRECTORIES']) delete process.env[name];
+
 // The real scripts/gate.sh with a fake make: a stage named fail-<n> exits <n>,
 // slow sleeps a second, hang sleeps until killed, report-env prints the
-// GATE_REPORT it was given; every stage is logged.
+// GATE_REPORT it was given; every stage is logged. Asked in question mode
+// (-q), it has something to run for every stage but up-to-date.
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const gate = path.join(root, 'scripts/gate.sh');
 const fakeMake = `#!/bin/sh
+if [ "$1" = -q ]; then case "$2" in up-to-date) exit 0 ;; *) exit 1 ;; esac; fi
 echo "$1" >> "$GATE_LOG"
 case "$1" in
   fail-*) echo "stage output of $1"; exit "\${1#fail-}" ;;
@@ -77,13 +82,50 @@ test('an interrupted gate reports the stage it was in and fails', async t => {
   const child = spawn(gate, ['demo-gate', 'lint', 'hang', 'verify'], { env: f.env, detached: true });
   let stdout = '';
   child.stdout.on('data', chunk => { stdout += chunk; });
-  while (!f.ran().includes('hang')) await new Promise(resolve => setTimeout(resolve, 50));
+  // Whatever ends the test, nothing of the gate's process group outlives it.
+  t.after(() => { try { process.kill(-child.pid, 'SIGKILL'); } catch { /* already gone */ } });
+  const deadline = Date.now() + 60_000;
+  while (!f.ran().includes('hang')) {
+    assert.ok(child.exitCode === null && child.signalCode === null, `the gate ended (${child.exitCode ?? child.signalCode}) before the stage it was to be interrupted in:\n${stdout}`);
+    assert.ok(Date.now() < deadline, 'the gate did not reach the stage it was to be interrupted in');
+    await new Promise(resolve => setTimeout(resolve, 50));
+  }
   process.kill(-child.pid, 'SIGTERM');
   const status = await new Promise(resolve => child.on('close', code => resolve(code)));
   assert.equal(status, 143);
   assert.deepEqual(f.ran(), ['lint', 'hang']);
   assert.deepEqual(report(stdout).map(r => r.slice(0, 2)), [['lint', 'passed'], ['hang', 'FAILED'], ['verify', 'not run'], ['demo-gate', 'FAILED']]);
   assert.deepEqual(f.json(), { gate: 'demo-gate', result: 'failed', stages: [{ name: 'lint', result: 'passed' }, { name: 'hang', result: 'failed' }, { name: 'verify', result: 'not run' }] });
+});
+test('a stage that make has nothing to run for fails the gate: nothing ran, so nothing passed', t => {
+  const f = fixture(t);
+  const result = f.run('lint', 'up-to-date', 'verify');
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /gate\.sh: make has nothing to run for up-to-date: it has no recipe, or a file or directory of that name exists and the target is not \.PHONY/);
+  assert.deepEqual(f.ran(), ['lint'], 'the stage was never run, and none after it');
+  assert.deepEqual(report(result.stdout).map(r => r.slice(0, 2)), [['lint', 'passed'], ['up-to-date', 'FAILED'], ['verify', 'not run'], ['demo-gate', 'FAILED']]);
+  assert.deepEqual(f.json(), { gate: 'demo-gate', result: 'failed', stages: [{ name: 'lint', result: 'passed' }, { name: 'up-to-date', result: 'failed' }, { name: 'verify', result: 'not run' }] });
+  // The real make: a target that is not .PHONY beside a directory of its name, and a name with no rule beside an existing path.
+  fs.mkdirSync(path.join(f.dir, 'project/e2e'), { recursive: true });
+  fs.mkdirSync(path.join(f.dir, 'project/tests'));
+  fs.writeFileSync(path.join(f.dir, 'project/Makefile'), '.PHONY: unit\nunit:\n\t@echo RAN unit\ne2e:\n\t@echo RAN e2e\n');
+  const real = (...stages) => spawnSync(gate, ['demo-gate', ...stages], { cwd: path.join(f.dir, 'project'), encoding: 'utf8', env: { ...makeEnv, GATE_REPORT: f.env.GATE_REPORT } });
+  assert.match(real('unit').stdout, /RAN unit[\s\S]*demo-gate +passed/);
+  for (const stage of ['e2e', 'tests']) {
+    const refused = real('unit', stage);
+    assert.equal(refused.status, 1, stage);
+    assert.match(refused.stdout, new RegExp(`make has nothing to run for ${stage}`));
+    assert.doesNotMatch(refused.stdout, /RAN e2e/);
+  }
+});
+test('a stage name that make would take for an option is rejected', t => {
+  const f = fixture(t);
+  for (const stage of ['-n', '--version', '-k']) {
+    const result = f.run('lint', stage);
+    assert.equal(result.status, 2, stage);
+    assert.match(result.stdout, /is not a stage/);
+    assert.deepEqual(f.ran(), []);
+  }
 });
 test('a gate without stages fails and says how to decide: name stages or declare none', t => {
   const f = fixture(t);
@@ -197,7 +239,8 @@ test('agent-check is the structure check and every tooling test of scripts/', ()
   assert.equal(agent.status, 0, agent.stderr);
   assert.ok(agent.stdout.startsWith(structure.stdout), 'the structure check comes first');
   const run = agent.stdout.split('\n').find(line => line.startsWith('node --test ')).split(' ');
-  const tests = fs.readdirSync(path.join(root, 'scripts')).filter(file => file.endsWith('.test.mjs')).map(file => `scripts/${file}`);
+  // The tooling's tests: a project's own test in scripts/ is its product's, run by `make test`.
+  const tests = fs.readdirSync(path.join(root, 'scripts')).filter(file => file.endsWith('.test.mjs')).map(file => `scripts/${file}`).filter(file => toolingChange([file]));
   assert.ok(tests.includes('scripts/gate.test.mjs'));
   for (const file of tests) assert.ok(run.includes(file), `agent-check does not run ${file}`);
   for (const file of run.filter(word => word.endsWith('.mjs'))) assert.ok(fs.existsSync(path.join(root, file)), `agent-check names ${file}, which does not exist`);
@@ -214,8 +257,9 @@ const toolingFiles = ['scripts/gate.sh', 'scripts/gate.test.mjs', 'scripts/check
   ...fs.readdirSync(path.join(root, 'scripts')).filter(file => /^agent-.*\.mjs$/.test(file)).map(file => `scripts/${file}`)];
 test('a change outside the documentation set needs a gate', () => {
   assert.equal(needsGate([]), false);
-  assert.equal(needsGate(['docs/agents/workflow.md', 'AGENTS.md', 'CLAUDE.md', 'README.md', '.github/pull_request_template.md']), false);
-  for (const file of ['src/app.js', 'Makefile', 'scripts/gate.sh', '.github/workflows/ci.yml', '.github/actions/setup/action.yml', 'src/README.md', 'package.json']) {
+  assert.equal(needsGate(['docs/agents/workflow.md', 'AGENTS.md', 'CLAUDE.md', 'README.md', '.github/pull_request_template.md', '.github/PULL_REQUEST_TEMPLATE/feature.md', '.github/ISSUE_TEMPLATE/bug.yml', '.github/CONTRIBUTING.md']), false);
+  // Under .github/ only Markdown and the templates are documentation: a script or a configuration there runs.
+  for (const file of ['src/app.js', 'Makefile', 'scripts/gate.sh', '.github/workflows/ci.yml', '.github/workflows/README.md', '.github/actions/setup/action.yml', '.github/scripts/deploy.sh', '.github/dependabot.yml', '.github/CODEOWNERS', 'src/README.md', 'package.json']) {
     assert.equal(needsGate(['docs/product/vision.md', file]), true, file);
   }
 });
@@ -228,7 +272,7 @@ test('a change to the agent tooling is named as one, and every tooling file is a
   }
   assert.equal(toolingChange([]), false);
   // Runtime or documentation, but not the tooling: the task gate alone proves these.
-  for (const file of ['src/app.js', 'scripts/deploy.sh', 'scripts/agent-notes.md', 'scripts/tools/agent-x.mjs', 'src/scripts/agent-local.mjs', 'src/Makefile', 'tests/integration/api.sh',
+  for (const file of ['src/app.js', 'scripts/deploy.sh', 'scripts/seed.test.mjs', 'scripts/agent-notes.md', 'scripts/tools/agent-x.mjs', 'src/scripts/agent-local.mjs', 'src/Makefile', 'tests/integration/api.sh',
     '.github/workflows/ci.yml', '.github/pull_request_template.md', 'docs/agents/workflow.md', 'AGENTS.md']) {
     assert.equal(toolingChange([file]), false, file);
   }

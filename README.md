@@ -244,7 +244,7 @@ The name is the repository's own (`master`, `trunk`, `release-1.x`) and differs 
 | `docs/product/` | Vision, scope, research, summary page, test lists |
 | `docs/adr/` | Architecture Decision Records |
 | `docs/plans/` | `backlog.json`, the plan template, plans in `planned/`, `active/`, `completed/` |
-| `scripts/agent-local.mjs` | The queue, the gates and the integration: `next`, `base`, `start`, `claim`, `gate`, `finish`, `integrate`, `publish`, `timings` |
+| `scripts/agent-local.mjs` | The queue, the gates and the integration: `next`, `base`, `phase`, `start`, `claim`, `gate`, `finish`, `integrate`, `publish`, `timings` |
 | `scripts/agent-workflow.mjs` | The structure check: the backlog against its plans and ADRs |
 | `scripts/agent-issues.mjs` | The GitHub mirror: `sync`, `sync --check`, `comment` |
 | `scripts/agent-summary.mjs` | Generates the summary page |

@@ -6,6 +6,9 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
+// A hook or `git rebase --exec` exports these: the fixtures' Git would then write into the caller's repository.
+for (const name of ['GIT_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE', 'GIT_PREFIX', 'GIT_COMMON_DIR', 'GIT_OBJECT_DIRECTORY', 'GIT_ALTERNATE_OBJECT_DIRECTORIES', 'GIT_NAMESPACE', 'GIT_CEILING_DIRECTORIES']) delete process.env[name];
+
 // migrate.mjs on a project as the scaffold left it before the rename: the
 // manifest's "mvp", the branch mvp1 with a bare origin, mvp1 documents, a
 // task plan that links to them, and a fake gh that holds the milestone "MVP 1".

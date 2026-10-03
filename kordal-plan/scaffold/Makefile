@@ -2,7 +2,8 @@
 
 .DEFAULT_GOAL := help
 
-# The stages of the gates, in order; each is a make target. Tasks add the
+# The stages of the gates, in order; each is a .PHONY make target with a
+# recipe: the gate refuses a stage make has nothing to run for. Tasks add the
 # product's own stages here (docs/agents/workflow.md, "Gates"):
 #   TASK_STAGES       every task: what runs in a minute or two with nothing started
 #   MILESTONE_STAGES  once, when the milestone is complete: the slow suites
@@ -16,7 +17,7 @@ RESILIENCE_STAGES :=
 
 .PHONY: help
 help: ## Show available commands
-	@grep -E '^[a-z-]+:.*## ' "$(firstword $(MAKEFILE_LIST))" | awk 'BEGIN {FS = ":.*## "}; {printf "  make %-16s %s\n", $$1, $$2}'
+	@grep -E '^[a-zA-Z0-9_.-]+:.*## ' "$(firstword $(MAKEFILE_LIST))" | awk 'BEGIN {FS = ":.*## "}; {printf "  make %-16s %s\n", $$1, $$2}'
 
 .PHONY: structure-check
 structure-check: ## Validate the backlog: task contracts, plans, ADR references, dependencies (local Node.js)
@@ -25,7 +26,8 @@ structure-check: ## Validate the backlog: task contracts, plans, ADR references,
 # Not a task stage. It runs where the tooling itself is at stake: with the task
 # gate of a branch that changes the agent tooling (scripts/agent-local.mjs
 # gate), in the hosted check of the pull request, and by hand after a scaffold
-# update. It names every scripts/*.test.mjs.
+# update. It names every tooling test of scripts/ (agent-*.test.mjs,
+# check-docs.test.mjs, gate.test.mjs).
 .PHONY: agent-check
 agent-check: structure-check ## The structure check and the agent tooling's own tests (local Node.js)
 	node --test scripts/agent-workflow.test.mjs scripts/agent-local.test.mjs scripts/agent-issues.test.mjs scripts/agent-summary.test.mjs scripts/check-docs.test.mjs scripts/gate.test.mjs

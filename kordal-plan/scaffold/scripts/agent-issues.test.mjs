@@ -7,6 +7,10 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { Worker, isMainThread, workerData } from 'node:worker_threads';
 
+// A hook or `git rebase --exec` exports these: the fixtures' Git would then
+// write into the caller's repository instead of their own.
+for (const name of ['GIT_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE', 'GIT_PREFIX', 'GIT_COMMON_DIR', 'GIT_OBJECT_DIRECTORY', 'GIT_ALTERNATE_OBJECT_DIRECTORIES', 'GIT_NAMESPACE', 'GIT_CEILING_DIRECTORIES']) delete process.env[name];
+
 // The real scripts in a real Git repository with a bare `origin`, whose
 // post-receive hook logs every push it receives, and agent-issues.fake-gh.mjs
 // in place of gh, which logs every read and write: documentation tasks,
@@ -164,6 +168,12 @@ scenario('the check names every difference and changes nothing; sync repairs it 
 scenario('an unreachable GitHub does not stop the work; next says so until publish succeeds', t => {
   const f = fixture(t);
   f.plan6();
+  // A full publish that fails marks the mirror, also where nothing marked it before.
+  assert.ok(!f.pending());
+  assert.equal(f.local(['publish'], true).status, 1);
+  assert.ok(f.pending());
+  assert.equal(f.local(['publish']).status, 0);
+  assert.ok(!f.pending());
   const finished = f.deliver(true);
   assert.equal(finished.status, 0, finished.stderr);
   assert.match(finished.stderr, /WARN: GitHub was not updated \(issue sync failed\)\. Run: node scripts\/agent-local\.mjs publish/);
@@ -171,6 +181,7 @@ scenario('an unreachable GitHub does not stop the work; next says so until publi
   assert.deepEqual(f.issue(1).labels, ['ready'], 'GitHub still shows the old state');
   assert.match(f.local(['next']).stdout, /^READY CAP-002: Freshness\nGitHub is out of sync\. Run: node scripts\/agent-local\.mjs publish\n$/);
   assert.equal(f.local(['publish'], true).status, 1);
+  assert.ok(f.pending(), 'a full publish that fails keeps the marker');
   assert.match(f.local(['publish']).stdout, /Pushed milestone1; issues synced\./);
   assert.equal(f.issue(1).state, 'closed');
   assert.equal(f.local(['next']).stdout, 'READY CAP-002: Freshness\n');
@@ -217,7 +228,12 @@ scenario('a round is published in batches: one push and one targeted sync per co
   assert.match(f.issue(2).body, /- \[x\] Works\n- \[x\] Fails safely/);
   assert.equal(f.git('ls-remote', 'origin', 'refs/heads/milestone1').split(/\s/)[0], f.git('rev-parse', 'milestone1'));
   // The next claim: origin holds the branch already, so nothing is pushed.
-  assert.equal(f.local(['claim', 'CAP-004']).status, 0);
+  // Origin is out of reach for it: a push that was attempted would fail, warn and mark the mirror.
+  const origin = f.git('remote', 'get-url', 'origin');
+  f.git('remote', 'set-url', 'origin', path.join(f.dir, 'bin/no-such-origin.git'));
+  const next = f.local(['claim', 'CAP-004']);
+  f.git('remote', 'set-url', 'origin', origin);
+  assert.deepEqual([next.status, next.stderr, f.pending()], [0, '', false]);
   assert.deepEqual(f.since(), { pushes: [], reads: read([4, 5]), writes: patch([4]), published: ['targeted: push skipped, sync ok'] });
   // The mirror is whole, as the check, which reads everything, confirms; so does the full publish, which lists.
   assert.equal(f.issues(['sync', '--check']).status, 0);
@@ -239,11 +255,11 @@ scenario('sync --only reconciles the named tasks and their direct dependants, an
   f.since();
   const only = f.issues(['sync', '--only', 'CAP-001']);
   assert.equal(only.status, 0, only.stderr);
-  assert.equal(only.stdout, 'fixed CAP-001 #1: labels differ (wanted ready)\nfixed CAP-004 #4: body differ\nPASS: the issues of CAP-001, CAP-004 in owner/product match the repository (2 fixed)\n');
+  assert.equal(only.stdout, 'fixed CAP-001 #1: title, labels differ (wanted ready)\nfixed CAP-004 #4: body differ\nPASS: the issues of CAP-001, CAP-004 in owner/product match the repository (2 fixed)\n');
   assert.deepEqual(f.since(), { pushes: [], reads: ['GET issues/1', 'GET issues/4'], writes: ['PATCH issues/1', 'PATCH issues/4'], published: [] });
   assert.deepEqual(f.issue(1).labels, ['bug', 'ready']);
   assert.match(f.issue(4).body, /^Deliver Acceptance\./);
-  assert.equal(f.issue(1).title, 'Renamed on GitHub', 'the title is the full sync\'s to repair: it needs no change of state');
+  assert.equal(f.issue(1).title, 'CAP-001: Identity', 'the title comes with the issue that is read anyway');
   assert.equal(f.issue(2).body, 'Edited on GitHub.', 'an issue that was not named stays as it is');
   assert.equal(f.issue(5).body, 'Edited on GitHub.', 'a dependant of a dependant is not touched');
   // A second run reads the same two issues and writes nothing.
@@ -252,14 +268,16 @@ scenario('sync --only reconciles the named tasks and their direct dependants, an
   // The check still sees what is left, and the full sync repairs it.
   const check = f.issues(['sync', '--check']);
   assert.equal(check.status, 1);
-  assert.match(check.stdout, /^DRIFT CAP-001 #1: title differ\nDRIFT CAP-002 #2: body differ\nDRIFT CAP-005 #5: body differ\n$/);
-  assert.match(f.issues(['sync']).stdout, /PASS: 5 issues of owner\/product match the repository \(3 fixed\)/);
+  assert.match(check.stdout, /^DRIFT CAP-002 #2: body differ\nDRIFT CAP-005 #5: body differ\n$/);
+  assert.match(f.issues(['sync']).stdout, /PASS: 5 issues of owner\/product match the repository \(2 fixed\)/);
   assert.equal(f.issues(['sync', '--check']).status, 0);
   // The check is the whole mirror or nothing, and a name is a task of the manifest.
   f.since();
   assert.match(f.issues(['sync', '--check', '--only', 'CAP-001']).stderr, /^FAIL: --check compares the whole mirror: it takes no --only\n$/);
   assert.match(f.issues(['sync', '--only', 'CAP-099']).stderr, /^FAIL: Unknown task CAP-099; use an ID of backlog\.json\n$/);
   assert.match(f.issues(['sync', '--only']).stderr, /^FAIL: Usage: agent-issues\.mjs sync \[--check \| --only <ID>,<ID>\] \| comment <ID> <file>\n$/);
+  // An argument it does not know is no full sync by accident.
+  for (const args of [['sync', '--only=CAP-001'], ['sync', '--chek'], ['sync', 'CAP-001']]) assert.match(f.issues(args).stderr, /^FAIL: Usage: agent-issues\.mjs sync/, args.join(' '));
   assert.deepEqual(f.since(), { pushes: [], reads: [], writes: [], published: [] }, 'a refused sync asks nothing');
 });
 scenario('sync --only falls back to the full sync for a task that has no issue yet', t => {
@@ -283,6 +301,46 @@ scenario('sync --only falls back to the full sync for a task that has no issue y
   f.commit('a task added during delivery');
   assert.equal(f.issues(['sync', '--only', 'CAP-006']).stdout, 'PASS: the issues of CAP-006 in owner/product match the repository\n', 'with its issue, it is synced alone');
 });
+scenario('a pull request recorded as a task\'s issue is never rewritten or closed by the targeted sync', t => {
+  const f = fixture(t);
+  f.plan6();
+  f.edit(state => { state.issues[0].pull_request = { url: 'https://api.github.com/repos/owner/product/pulls/1' }; });
+  f.since();
+  const claimed = f.local(['claim', 'CAP-001']);
+  assert.equal(claimed.status, 0, 'the local claim stands');
+  assert.match(claimed.stderr, /FAIL: CAP-001: #1 is a pull request of owner\/product, not an issue\nWARN: GitHub was not updated \(issue sync failed\)/);
+  assert.deepEqual(f.since().writes, [], 'nothing was written to the pull request');
+  assert.ok(f.pending());
+});
+scenario('an issue adopted from outside the sync, in no GitHub milestone yet, makes the claim\'s sync a full one', t => {
+  const f = fixture(t);
+  f.plan6();
+  // The owner's own issue, taken as the task's: another title, no milestone.
+  f.edit(state => { state.issues[0].title = 'Export the list as CSV'; state.issues[0].milestone = null; });
+  f.since();
+  assert.equal(f.local(['claim', 'CAP-001']).status, 0);
+  const { reads } = f.since();
+  assert.deepEqual(reads, ['GET issues/1', 'GET issues/2', 'GET labels', 'GET milestones', 'GET issues'], 'the task and its dependant read alone first, then everything with the lists');
+  assert.deepEqual([f.issue(1).title, f.issue(1).milestone, f.issue(1).labels], ['CAP-001: Identity', 1, ['in-progress']]);
+  assert.equal(f.issues(['sync', '--check']).status, 0);
+});
+scenario('a task without an issue is claimed on its own: its number is written into the checkout that delivers it', t => {
+  const f = fixture(t, round());
+  f.plan6();
+  const added = { id: 'CAP-006', title: 'Export', slug: 'export', issue: null, depends_on: [], adrs: [] };
+  const manifest = f.manifest(); manifest.tasks.push(added);
+  f.write('docs/plans/backlog.json', JSON.stringify(manifest));
+  f.write('docs/plans/planned/CAP-006-export.md', plan(added));
+  f.since();
+  const refused = f.local(['claim', 'CAP-001', 'CAP-006']);
+  assert.equal(refused.status, 1);
+  assert.match(refused.stderr, /^FAIL: CAP-006 has no issue yet: claim it on its own, in the checkout that delivers it, and commit the issue number on its branch\n$/);
+  assert.equal(f.git('branch', '--list', 'task/*'), '');
+  assert.deepEqual(f.since(), { pushes: [], reads: [], writes: [], published: [] });
+  assert.equal(f.local(['claim', 'CAP-006']).status, 0);
+  assert.equal(f.manifest().tasks[5].issue, 6);
+});
+
 scenario('an unreachable GitHub during a round leaves the local result and the marker; a targeted publish that succeeds later does not clear it', t => {
   const f = fixture(t, round());
   f.plan6();
