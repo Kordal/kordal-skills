@@ -1,6 +1,6 @@
 ---
 name: kordal-plan-feature
-description: Plan a small feature of at most three tasks that needs no new architecture decision.
+description: The level above /kordal-quick - plan a small product addition of one to three tasks that needs no new architecture decision.
 disable-model-invocation: false
 argument-hint: "<idea or issue number>"
 ---

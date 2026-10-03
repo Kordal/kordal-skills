@@ -5,9 +5,11 @@ disable-model-invocation: false
 argument-hint: "<issue number or URL>"
 ---
 
-Review issue `$ARGUMENTS` as the quality gate between issue creation and implementation: can a coding agent implement it without a significant product assumption? The run changes no code and leaves the issue's text as it is; it ends in one result, one comment on the issue and the issue's state label. With no issue named, list those awaiting review (`gh issue list --search "label:needs-review,needs-rework,needs-info"`) and ask which.
+Review issue `$ARGUMENTS` as the quality gate between issue creation and implementation: can a coding agent implement it without a significant product assumption? The run changes no code and leaves the issue's text as it is; it ends in one result, one comment on the issue and the issue's state label.
 
-The reviewer has a context of its own. In a session that wrote or discussed this issue, dispatch a generic subagent in the foreground and relay its hand-over: "Read `${CLAUDE_SKILL_DIR}/SKILL.md` and review issue `<number>` in `<repository path>` by it. End with the result, the comment's URL and the blocking findings."
+With no issue named, list those awaiting review and ask which: `gh issue list --state open --label needs-review --json number,title,updatedAt`. The state labels exclude each other, so each is its own query. List `needs-rework` and `needs-info` the same way, separately, as waiting on their author or the owner: one of those is reviewed again once it has changed.
+
+The reviewer has a context of its own. In a session that wrote or discussed this issue, dispatch a generic subagent in the foreground and relay its hand-over: "Read `${CLAUDE_SKILL_DIR}/SKILL.md` and review issue `<number>` in `<repository path>` by it; the skill directory it names for its script is the one that file lies in. End with the result, the comment's URL and the blocking findings."
 
 ## 1. Read
 
@@ -19,14 +21,16 @@ An issue that carries an earlier review is reviewed afresh, on its current text.
 
 ## 2. Verify against the repository
 
-List every claim the issue makes about the repository, then check each:
+The issue is the map, and the review checks the map: start from the paths it names and stay inside the area it names. The repository is not explored from zero.
+
+List the **material** claims of the issue, those an acceptance criterion or the implementation rests on; its Repository Context holds most of them. Verify each yourself, in the code:
 
 - each page, component, module, API and service it names exists, at the path it gives;
 - what it says to reuse fits the purpose;
 - its account of current behaviour matches the code;
 - the conventions that bind the change (`AGENTS.md`, `CLAUDE.md`, the ADRs, permission rules) agree with what it asks.
 
-Then look for what the issue did not say:
+Then five bounded checks, in that area, for what the issue did not say:
 
 - the requested behaviour already exists, wholly or in part;
 - a similar implementation or an established pattern it overlooked;
@@ -34,7 +38,7 @@ Then look for what the issue did not say:
 - the same work in another issue: `gh issue list --state all --search "<key words>"`;
 - how this area is tested, and with which command.
 
-Done when every claim is marked confirmed, wrong or unverifiable, and each of the five searches has an answer.
+Done when every material claim is marked confirmed, wrong or unverifiable, and each of the five checks has an answer.
 
 ## 3. Judge
 
@@ -111,7 +115,7 @@ Write the comment to a file outside the repository and post it: `gh issue commen
 
 ## 6. Label
 
-An issue carries one state label at a time: `needs-review`, `needs-rework`, `needs-info`, `duplicate`, `already-implemented`, `ready-for-dev`, `in-development` or `needs-pr-review`. Set the one of the result's row and remove every other the issue carries: `gh issue edit <number> --add-label <label> --remove-label <label>`. Create a missing label with `gh label create <label> --description "<what it means>"`.
+An issue carries one state label at a time: `needs-review`, `needs-rework`, `needs-info`, `duplicate`, `already-implemented`, `ready-for-dev`, `in-development` or `needs-pr-review`. Run `bash ${CLAUDE_SKILL_DIR}/../kordal-issue/labels.sh` first, which creates those the repository lacks. Then set the one of the result's row and remove every other the issue carries: `gh issue edit <number> --add-label <label> --remove-label <label>`.
 
 `ready-for-dev` is set by this review alone. The status labels (`waiting`, `blocked`, `ready`, `in-progress`, `done`) belong to the tasks of the backlog and are never set here.
 

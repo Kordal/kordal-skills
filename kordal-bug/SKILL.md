@@ -7,7 +7,7 @@ argument-hint: "<what is wrong, or an issue number>"
 
 Fix the bug in `$ARGUMENTS`, from the report to an open pull request labelled `needs-pr-review`; approval and merge belong to the reviewer and the owner. With no report, ask for one.
 
-A **bug** is behaviour that departs from what the product already promises: a test, the documentation, an acceptance criterion, the evident intent of the code. The promise settles what done means, so a bug needs no issue review: its reproduction, turned green, is the acceptance criterion. Behaviour the owner wants and the product never promised is a feature and goes to `/kordal-issue`.
+A **bug** is behaviour that departs from what the product already promises: a test, the documentation, an acceptance criterion, the evident intent of the code. The promise settles what done means, so a bug needs no issue review: its reproduction, turned green, is the acceptance criterion. Behaviour the owner wants and the product never promised is a feature, and is routed as one: `/kordal-quick`, `/kordal-plan-feature` or `/kordal-plan`.
 
 A number that is a pull request (`gh pr view <number>`) goes to [Review feedback](#review-feedback).
 
@@ -21,10 +21,12 @@ Look for the same bug: `gh issue list --state open --search "<key words>"` and `
 
 Then the code that will receive the fix. The working tree has to be clean; one that is not ends the run with the owner told what is in it. `git fetch`, and:
 
-- **A milestone in progress** (`docs/plans/backlog.json` names an `integration_branch` the default branch does not contain): the target is the integration branch.
-- **Otherwise**: the target is the default branch, unless the issue or `AGENTS.md` names another.
+- **A milestone in progress** (`docs/plans/backlog.json` names an `integration_branch` the base branch does not contain): the target is the integration branch.
+- **Otherwise**: the target is the base branch, unless the issue or `AGENTS.md` names another.
 
-Check the target out and update it: the bug is reproduced on the code as it is now.
+The base branch is what `node scripts/agent-local.mjs base` prints, the `base_branch` of that manifest; a repository without the scaffold uses its default branch.
+
+Check the target out and update it: the bug is reproduced on the code as it is now. The integration branch is checked out detached (`git switch --detach <integration branch>`), because no worktree may hold that branch itself.
 
 Done when the sentence names its promise and the checkout is on the current target.
 
@@ -54,17 +56,17 @@ The first row that applies:
 | Finding | Route |
 | --- | --- |
 | The cause lies outside this repository: a dependency, the environment, the data | Tell the owner the cause and what would fix it there; end the run |
-| The owner wants behaviour the product never promised | `/kordal-issue`, given the report; end the run |
+| The owner wants behaviour the product never promised | A feature: name its level, `/kordal-quick`, `/kordal-plan-feature` or `/kordal-plan`, given the report; end the run |
 | The fix needs a product decision: which of two behaviours is right, permissions, a data change, an API contract | One question with `AskUserQuestion` where a sentence answers it; otherwise `/kordal-issue`, given the reproduction and the cause, and end the run |
 | The fix needs an architectural change, or several changes that can each be delivered on their own | `/kordal-issue`, given the reproduction and the cause; end the run |
-| A milestone is in progress | The fix is a task: "Add a task during delivery" in `docs/agents/workflow.md`. Its plan holds the reproduction, the cause and, as acceptance criteria, the reproduction turned green; the reproduction goes onto the task's branch. Then read `${CLAUDE_SKILL_DIR}/../kordal-build/SKILL.md` in full and follow it with the task's ID. The run ends with that skill's report |
+| A milestone is in progress | The fix is a task: "Add a task during delivery" in `docs/agents/workflow.md`. Its plan holds the reproduction, the cause and, as acceptance criteria, the reproduction turned green; the reproduction goes onto the task's branch. Then deliver the task by `${CLAUDE_SKILL_DIR}/../kordal-build/SKILL.md` with the task's ID as its arguments: its sections "Updates", "Deliver one task", "The review" and "Stop and ask". The run ends with that skill's report |
 | None of these | Step 5 |
 
 ## 5. Fix
 
-Branch from the target, taking the reproduction along: `fix/<number>-<short-description>` with an issue, `fix/<short-description>` without. With an issue, move it to `in-development`.
+Branch from the target, taking the reproduction along: `fix/<number>-<short-description>` with an issue, `fix/<short-description>` without. Run `bash ${CLAUDE_SKILL_DIR}/../kordal-issue/labels.sh`, which creates each state label the repository lacks, the pull request's `needs-pr-review` among them. With an issue, move it to `in-development`.
 
-Read `${CLAUDE_SKILL_DIR}/../kordal-issue-code/SKILL.md` in full. Its steps 5 to 8 (Implement, Validate, Review your diff, Commit and push) bind this fix, and so does its rule of one state label at a time. Where they speak of the acceptance criteria, that is the regression test; where they say escalate, that is the product-decision row of step 4.
+Read steps 5 to 8 (Implement, Validate, Review your diff, Commit and push) of `${CLAUDE_SKILL_DIR}/../kordal-issue-code/SKILL.md`: they bind this fix, and so does the rule of one state label at a time in its step 4. Where they speak of the acceptance criteria, that is the regression test; where they say escalate, that is the product-decision row of step 4.
 
 - **The regression test first.** The reproduction becomes a test in the repository's existing kinds and places, seen red before the fix. A bug no test of this repository can reach keeps its command, and the pull request says so.
 - **Fix the cause.** The change sits at the line step 3 named, and is the smallest one that removes the cause; a guard further down that hides the symptom leaves the bug in place.
@@ -91,7 +93,7 @@ The test and what it asserts: red before the fix, green after.
 
 ## Validation
 - `npm run lint` ✅
-- `npm test` ⚠️ `foo.test.ts` fails on `main` too, unrelated to this change.
+- `npm test` ⚠️ `foo.test.ts` fails on the target branch too, unrelated to this change.
 
 ## Follow-up opportunity
 What was found and left unchanged, with its path.

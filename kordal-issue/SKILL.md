@@ -1,11 +1,13 @@
 ---
 name: kordal-issue
-description: Turn the owner's feature request, bug report, improvement idea or chore into a GitHub issue a coding agent can implement without guessing, grounded in this project's repository.
+description: Write a GitHub issue a coding agent can implement without guessing - only when the owner asks for an issue or wants the work handed off for later, or the repository is managed through reviewed issues. A direct request to build something goes to /kordal-quick, /kordal-plan-feature or /kordal-plan.
 disable-model-invocation: false
 argument-hint: "<what is wanted or wrong>"
 ---
 
 Turn `$ARGUMENTS` into a GitHub issue that a coding agent with no view of this conversation can implement with minimal guessing. The issue states what has to be achieved and what done means; the implementer chooses how. The run changes no code and creates one issue, labelled `needs-review`. With no description, ask for one.
+
+The issue workflow applies in three cases only: the owner asks for an issue, the owner wants the work handed off for later, or the repository is managed through reviewed GitHub issues. What `/kordal-quick` or `/kordal-bug` sent here is such a hand-off. A direct request to build something is routed, and no issue is written: `/kordal-quick` for one clear, localized, low-risk change; `/kordal-plan-feature` for a small addition of one to three tasks; `/kordal-plan` for more, or for a new architecture decision; `/kordal-bug` for behaviour that departs from what the product already promises. Name the level and stop.
 
 ## 1. Understand
 
@@ -101,7 +103,7 @@ Done when every answer is yes.
 
 ## 6. Create
 
-Two labels: `needs-review`, created where the repository lacks it (`gh label create needs-review --description "Written by an agent, awaiting /kordal-issue-review"`), and the kind label the repository already has (`gh label list`), such as `bug` or `enhancement`; without a fitting one, `needs-review` alone. The status labels (`waiting`, `blocked`, `ready`, `in-progress`, `done`) belong to the tasks of the backlog and are never set here.
+Run `bash ${CLAUDE_SKILL_DIR}/labels.sh` first: it creates each state label of the issue workflow the repository lacks, so that no later command meets a missing one. Then two labels: `needs-review`, and the kind label the repository already has (`gh label list`), such as `bug` or `enhancement`; without a fitting one, `needs-review` alone. The status labels (`waiting`, `blocked`, `ready`, `in-progress`, `done`) belong to the tasks of the backlog and are never set here.
 
 Write the body to a file outside the repository and run `gh issue create --title "<title>" --body-file <file> --label needs-review --label <kind>`. The repository is this checkout's `origin`.
 

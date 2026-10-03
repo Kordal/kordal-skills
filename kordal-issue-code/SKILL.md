@@ -28,7 +28,7 @@ Start only when all of these hold:
 - a comment that counts holds an Issue Review with the result `READY`, and its `createdAt` is later than the issue's `lastEditedAt` (`null`: the body was never edited);
 - the issue has acceptance criteria;
 - no blocking question is open, in the body or in a comment that counts;
-- the repository is not delivering a milestone: it has no `docs/plans/backlog.json`, or the `integration_branch` that file names is contained in the default branch. A milestone in progress takes the issue in as a task: `/kordal-plan-feature <number>`.
+- the repository is not delivering a milestone: it has no `docs/plans/backlog.json`, or the `integration_branch` that file names is contained in the base branch. The base branch is what `node scripts/agent-local.mjs base` prints, the `base_branch` of that manifest; a repository without the scaffold uses its default branch. A milestone in progress takes the issue in as a task: `/kordal-plan-feature <number>`.
 
 When one fails, tell the owner which one and what has to happen first, and end the run.
 
@@ -38,12 +38,12 @@ The body, every comment that counts, every linked issue and file. Where the revi
 
 ## 3. Inspect the repository
 
-Read the paths the issue names, then find what the change will sit beside:
+The reviewed Repository Context is your map. Open the paths it names, verify each claim you will rely on, and read the affected code and its tests. Search wider only where a claim fails or the context is silent on one of these:
 
-- the conventions that bind it: `AGENTS.md`, `CLAUDE.md`, the ADRs, the lint and format configuration;
+- the conventions that bind the change: `AGENTS.md`, `CLAUDE.md`, the ADRs, the lint and format configuration;
 - a similar implementation that sets the pattern, and each component, utility, service, client or validation the change can reuse; search before creating one;
 - how this area is tested;
-- the validation commands: what the CI workflow runs, and the scripts or `make` targets behind it.
+- the validation commands: what the CI workflow runs for this area, and the scripts or `make` targets behind it.
 
 Then check the issue against the code as it is now. [Escalate](#escalate) when the behaviour already exists, a component the issue names is gone, the criteria contradict the current system, the change needs a major architectural change, or it would open an obvious security or data-integrity hole.
 
@@ -51,14 +51,14 @@ Done when you can name, per criterion, the files that change and the test that w
 
 ## 4. Branch
 
-The target is the repository's default branch, unless the issue or `AGENTS.md` names another. The working tree has to be clean; one that is not ends the run with the owner told what is in it.
+The target is the base branch of step 1, unless the issue or `AGENTS.md` names another. The working tree has to be clean; one that is not ends the run with the owner told what is in it.
 
 `git fetch`, then:
 
 - **A new issue**: update the target and branch from it: `feature/<number>-<short-description>`, `fix/…` for a bug, `chore/…` for maintenance, as in `feature/142-add-server-button`.
 - **An issue that has its branch** (an interrupted run, or an escalation that review answered): check that branch out, from `origin` where this checkout lacks it, merge the target into it, and read what it already holds against AC1…ACn.
 
-Move the issue: `gh issue edit <number> --remove-label ready-for-dev --add-label in-development`. An issue carries one state label at a time (`needs-review`, `needs-rework`, `needs-info`, `ready-for-dev`, `in-development`, `needs-pr-review`): each move here sets one and removes the one it replaces. Labels the repository lacks are created with `gh label create`.
+Run `bash ${CLAUDE_SKILL_DIR}/../kordal-issue/labels.sh`, which creates each state label the repository lacks, the pull request's `needs-pr-review` among them. Then move the issue: `gh issue edit <number> --remove-label ready-for-dev --add-label in-development`. An issue carries one state label at a time (`needs-review`, `needs-rework`, `needs-info`, `ready-for-dev`, `in-development`, `needs-pr-review`): each move here sets one and removes the one it replaces.
 
 ## 5. Implement
 
@@ -73,13 +73,17 @@ Change what the criteria require, in the repository's own patterns, in this orde
 
 ## 6. Validate
 
-Run every command of step 3 that covers the change: format, lint, type check, tests, build, the end-to-end tests of the area.
+In proportion to the change, in this order:
+
+1. **Targeted**: the tests of the changed area; lint, format and type check of the changed files.
+2. **The affected area**: the project checks required for it.
+3. **Broader**: wider suites, the build and end-to-end tests, when the risk, the repository's policy (CI requires them, `AGENTS.md` says so) or the affected scope calls for them.
 
 A failure your change caused is fixed before going on. A failure you believe was there before is proven: the same command fails in a temporary worktree of the target (`git worktree add <dir> origin/<target>`). It then goes into the pull request with the exact command and the failing test.
 
 Then the criteria: beside each of AC1…ACn, the evidence, either the test that covers it or the check you made and what you saw. A criterion without evidence is not met: finish it, or [escalate](#escalate) when it cannot be verified.
 
-Done when every command has a recorded result and every criterion has evidence. Report results as they are; a command that was not run is listed as not run.
+Done when every check that ran has a recorded result and every criterion has evidence. Report results as they are: a check that was not run is reported as not run, and nothing as passed unless it ran.
 
 ## 7. Review your diff
 
@@ -113,7 +117,8 @@ What was implemented, in two or three sentences.
 
 ## Validation
 - `npm run lint` ✅
-- `npm test` ⚠️ `foo.test.ts` fails on `main` too, unrelated to this change.
+- `npm test` ⚠️ `foo.test.ts` fails on the target branch too, unrelated to this change.
+- `npm run e2e`: not run, the change is outside what it covers.
 
 ## Testing Notes
 What was verified by hand, and how a reviewer can see the change working.
@@ -137,7 +142,7 @@ Validation:
 - lint ✅
 - typecheck ✅
 - tests ✅
-- build ✅
+- build: not run
 
 Status: awaiting PR review.
 ```
@@ -152,7 +157,7 @@ For a product decision the issue leaves open, and for each conflict of step 3. S
 
 1. Commit the work already done and push its branch, without a pull request: the next run resumes it.
 2. Comment on the issue: the question, what in the repository raised it (with the path), the options, each answerable in a sentence, and the branch.
-3. `gh issue edit <number> --add-label needs-info --remove-label in-development`.
+3. Set `needs-info` and remove the state label the issue carries, `in-development` or, before step 4, `ready-for-dev`: `gh issue edit <number> --add-label needs-info --remove-label <label>`, after `labels.sh` where step 4 has not run it.
 4. Tell the owner the question. The issue returns through `/kordal-issue-review` before work resumes.
 
 ## Review feedback
