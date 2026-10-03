@@ -1,7 +1,7 @@
 ---
 name: kordal-build
 description: Deliver the planned milestone through the project's delivery workflow - the next ready task, a named task, the whole queue, or the final push.
-disable-model-invocation: true
+disable-model-invocation: false
 argument-hint: "[task ID | all | all serial | ship]"
 ---
 

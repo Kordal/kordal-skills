@@ -1,7 +1,7 @@
 ---
 name: kordal-plan
 description: Plan the next milestone through the six-stage planning workflow, or a small feature through its short path; in a new project, scaffold the agent structure first.
-disable-model-invocation: true
+disable-model-invocation: false
 argument-hint: "[milestone number or outcome idea | feature <idea> | update]"
 ---
 

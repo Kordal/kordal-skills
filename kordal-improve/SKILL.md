@@ -1,7 +1,7 @@
 ---
 name: kordal-improve
 description: Investigate an improvement question about the product or its code and return evidenced findings and ranked proposals for the owner to choose from.
-disable-model-invocation: true
+disable-model-invocation: false
 argument-hint: "<question>"
 ---
 

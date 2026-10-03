@@ -1,7 +1,7 @@
 ---
 name: kordal-build-ship
 description: Open the pull request of the accepted milestone or feature; the owner merges.
-disable-model-invocation: true
+disable-model-invocation: false
 ---
 
 This command is `/kordal-build` in its mode `ship`. Read `${CLAUDE_SKILL_DIR}/../kordal-build/SKILL.md` in full and follow it with `ship` as its arguments.

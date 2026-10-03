@@ -1,7 +1,7 @@
 ---
 name: kordal-plan-feature
 description: Plan a small feature of at most three tasks that needs no new architecture decision.
-disable-model-invocation: true
+disable-model-invocation: false
 argument-hint: "<idea>"
 ---
 

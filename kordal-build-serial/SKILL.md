@@ -1,7 +1,7 @@
 ---
 name: kordal-build-serial
 description: Deliver the whole queue, one task at a time.
-disable-model-invocation: true
+disable-model-invocation: false
 ---
 
 This command is `/kordal-build` in its mode `all serial`. Read `${CLAUDE_SKILL_DIR}/../kordal-build/SKILL.md` in full and follow it with `all serial` as its arguments.

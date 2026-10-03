@@ -1,7 +1,7 @@
 ---
 name: kordal-plan-update
 description: Bring this project's agent scaffold up to date with the skills repository.
-disable-model-invocation: true
+disable-model-invocation: false
 ---
 
 This command is `/kordal-plan` in its mode `update`. Read `${CLAUDE_SKILL_DIR}/../kordal-plan/SKILL.md` in full and follow it with `update` as its arguments.

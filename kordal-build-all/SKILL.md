@@ -1,7 +1,7 @@
 ---
 name: kordal-build-all
 description: Deliver the whole queue, independent tasks in parallel.
-disable-model-invocation: true
+disable-model-invocation: false
 ---
 
 This command is `/kordal-build` in its mode `all`. Read `${CLAUDE_SKILL_DIR}/../kordal-build/SKILL.md` in full and follow it with `all` as its arguments.
