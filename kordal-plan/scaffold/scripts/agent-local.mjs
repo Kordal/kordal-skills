@@ -450,7 +450,8 @@ async function integrate(manifest, named, defer) {
 function phase(manifest) {
   const integration = manifest.integration_branch, base = baseBranch(manifest), tip = tipOf(integration);
   const from = tipOf(base) ?? tryGit('rev-parse', '--verify', '--quiet', `refs/remotes/origin/${base}`);
-  const open = manifest.tasks.filter(task => stateOf(manifest, task).state !== 'DONE').map(task => task.id);
+  // Done on the integration branch, or on the base branch where the merged integration branch was deleted.
+  const open = manifest.tasks.filter(task => stateOf(manifest, task).state !== 'DONE' && !(from && tryGit('cat-file', '-e', `${from}:${planPath(task, 'completed')}`) !== null)).map(task => task.id);
   let ahead = false;
   if (tip && from && !isAncestor(tip, from)) {
     const merge = spawnSync('git', ['merge-tree', '--write-tree', '--no-messages', from, tip], { cwd: root, encoding: 'utf8' });

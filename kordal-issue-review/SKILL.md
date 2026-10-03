@@ -7,7 +7,7 @@ argument-hint: "<issue number or URL>"
 
 Review issue `$ARGUMENTS` as the quality gate between issue creation and implementation: can a coding agent implement it without a significant product assumption? The run changes no code and leaves the issue's text as it is; it ends in one result, one comment on the issue and the issue's state label.
 
-With no issue named, list those awaiting review and ask which: `gh issue list --state open --label needs-review --json number,title,updatedAt`. The state labels exclude each other, so each is its own query. List `needs-rework` and `needs-info` the same way, separately, as waiting on their author or the owner: one of those is reviewed again once it has changed.
+With no issue named, list those awaiting review and ask which: `gh issue list --state open --label needs-review --limit 200 --json number,title,updatedAt`. The state labels exclude each other, so each is its own query. List `needs-rework` and `needs-info` the same way, separately, as waiting on their author or the owner: one of those is reviewed again once it has changed. A listing of exactly 200 may be cut short: say so.
 
 The reviewer has a context of its own. In a session that wrote or discussed this issue, dispatch a generic subagent in the foreground and relay its hand-over: "Read `${CLAUDE_SKILL_DIR}/SKILL.md` and review issue `<number>` in `<repository path>` by it; the skill directory it names for its script is the one that file lies in. End with the result, the comment's URL and the blocking findings."
 

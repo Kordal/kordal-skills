@@ -15,6 +15,8 @@ for agent in ~/Development/kordal-skills/agents/*.md; do ln -sfn "$agent" ~/.cla
 
 Any folder works in place of `~/Development/kordal-skills`. The two loops link every `kordal-*/` directory and every agent, so a `git pull` there updates them all; after a pull that adds a skill or an agent, run the loops again. The skills load in Claude Code sessions started after the install.
 
+A pull updates the skills, not the projects: each project keeps the scaffold it was created with. After a pull that changes `kordal-plan/scaffold/`, run `/kordal-plan-update` in each scaffolded project before `/kordal-build`. A skill that needs a newer scaffold than the project has says so and stops.
+
 Needs:
 
 - Claude Code;
@@ -41,7 +43,7 @@ Every skill and agent runs on the model you choose for the session; none of them
 
 QUICK → FEATURE → MILESTONE is one ladder: each level takes what the level below must refuse.
 
-During an active milestone (the integration branch holds work the base branch lacks): a QUICK change that touches no file the milestone has changed (`git diff --name-only <base>...<integration>`) is still QUICK, from the base branch; anything else joins the milestone: a feature through `/kordal-plan-feature` (its tasks join the queue), a bug through `/kordal-bug` (it becomes a task), a reviewed issue through `/kordal-plan-feature <number>`. Larger work waits for the next milestone's planning.
+During an active milestone or feature (`node scripts/agent-local.mjs phase` prints `delivering` and the reason: a task of the manifest is unfinished, or the integration branch holds work the base branch lacks): a QUICK change that touches no file the milestone has changed (`git diff --name-only <base>...<integration>`) is still QUICK, from the base branch; anything else joins the milestone: a feature through `/kordal-plan-feature` (its tasks join the queue), a bug through `/kordal-bug` (it becomes a task), a reviewed issue through `/kordal-plan-feature <number>`. Larger work waits for the next milestone's planning. The command prints `between` otherwise; it decides by merging, not by ancestry, so a squash- or rebase-merged pull request counts as merged. A repository without the scaffold has no milestone.
 
 A scaffolded project holds the same table in its `AGENTS.md`, under "How work enters", so that every agent routes a request the same way.
 
@@ -53,19 +55,19 @@ A scaffolded project holds the same table in its `AGENTS.md`, under "How work en
 | `/kordal-plan` | Plans the next milestone. In a new folder it scaffolds the project first. Resumes interrupted planning |
 | `/kordal-plan <idea>` | The same, starting from the idea |
 | `/kordal-plan-feature <idea or issue number>` | Plans a small addition: one to three tasks, no new architecture decision. Given an issue, plans from its text and makes it the first task's issue |
-| `/kordal-plan-update` | Brings a project's scaffold up to date with this repository: a three-way merge per file, which keeps what the project changed |
+| `/kordal-plan-update` | Brings a project's scaffold up to date with this repository: a three-way merge per file, which keeps what the project changed. Has you decide the stages of the full and the resilience gate where the Makefile leaves them empty |
 | `/kordal-improve <question>` | Investigates a question about the product or its code; returns evidenced findings and ranked proposals. Changes no code |
 | `/kordal-issue <description>` | Writes a GitHub issue a coding agent can implement, when you ask for an issue or hand the work off for later: inspects the repository, writes testable acceptance criteria, creates the issue labelled `needs-review`. A direct request to build something is sent to its level instead |
 | `/kordal-issue-review <issue>` | Reviews an issue against the repository before development, in a context that did not write it: one result (`READY`, `NEEDS_REWORK`, `NEEDS_INFO`, `TOO_LARGE`, `DUPLICATE`), posted as one comment, and the matching label. Only `READY` sets `ready-for-dev`. Changes no code |
 | `/kordal-issue-code <issue>` | Implements an issue labelled `ready-for-dev`: branch, the smallest change that meets every acceptance criterion, tests, validation in proportion to the change, self-review, and a pull request labelled `needs-pr-review`. Escalates a product decision to the issue (`needs-info`) instead of guessing. Never approves or merges |
-| `/kordal-bug <what is wrong, or an issue number>` | Fixes a bug: reproduces it, finds the cause, fixes it under a regression test, and opens a pull request labelled `needs-pr-review`. During a milestone the fix is delivered as a task instead. Names the level for what turns out to be a feature, and sends a product decision or a fix too large for one change to `/kordal-issue`. Never approves or merges |
+| `/kordal-bug <what is wrong, or an issue number>` | Fixes a bug: reproduces it, finds the cause, fixes it under a regression test, and opens a pull request labelled `needs-pr-review`. During a milestone the fix is delivered as a task instead. Names the level for what turns out to be a feature, sends a fix that needs an architecture decision to `/kordal-plan`, and a product decision or a fix that needs several changes to `/kordal-issue`. Never approves or merges |
 | `/kordal-build` | Delivers the next ready task, or resumes the unfinished one |
 | `/kordal-build <ID>` | Delivers that task |
 | `/kordal-build-all` | Delivers the whole queue in rounds: up to five independent tasks side by side, each in its own worktree, integrated together |
 | `/kordal-build-serial` | The same, one task at a time |
 | `/kordal-build-ship` | Opens the pull request of the accepted milestone or feature, then stops the dev servers, emulators and containers the milestone started. The owner merges |
 
-Claude may start a command itself when the conversation calls for it. One runs only when you type it, because it opens the milestone's pull request: `/kordal-build-ship`.
+Claude may start a command itself when the conversation calls for it. The milestone's pull request is opened only on your typed command: Claude cannot start `/kordal-build-ship`, and the `ship` mode of `/kordal-build` opens nothing unless you typed it.
 
 ## Agents
 
@@ -102,7 +104,7 @@ Stage 1 researches the delta. The first milestone, and one that takes the produc
 `/kordal-plan-feature <idea>` is the level above QUICK, with effort in proportion to the feature:
 
 - it states the feature as one sentence, and asks you to confirm it only where the request leaves the behaviour open;
-- it checks the fit (one to three tasks, no new ADR, not excluded), and offers `/kordal-quick` for a request that meets every QUICK condition;
+- it checks the fit (one to three tasks, no new ADR, not excluded), and offers `/kordal-quick` for a request that meets every QUICK condition and touches no file an active milestone has changed;
 - it writes as few plans as the feature allows, and asks for your approval when the feature has more than one task or the fit is in doubt: a one-task feature whose request was unambiguous proceeds, its plan shown in the hand-off;
 - it registers the tasks, and generates no summary page: that is a milestone's artifact.
 
@@ -181,7 +183,7 @@ A project that is delivering a milestone takes no pull request per issue: there 
 | 5 | Fix: the regression test first, then the smallest change at the cause | The test is green and was red before |
 | 6 | Pull request: Bug, Cause, Fix, Regression test, Validation | It is open; you merge it |
 
-Step 4 names the level for what turns out to be a feature, and sends a product decision or a fix that needs several changes to `/kordal-issue`. While a milestone is being delivered, it turns the fix into a task of that milestone and `/kordal-build` delivers it. Review comments on the pull request are addressed with `/kordal-bug <pull request number>`.
+Step 4 names the level for what turns out to be a feature, sends a fix that needs an architecture decision to `/kordal-plan`, and a product decision or a fix that needs several changes to `/kordal-issue`. While a milestone is being delivered, it turns the fix into a task of that milestone and `/kordal-build` delivers it. Review comments on the pull request are addressed with `/kordal-bug <pull request number>`.
 
 ## Delivering
 
@@ -192,12 +194,13 @@ Per task: claim, implement, gate, review, complete, integrate, report. In the pr
 | `make task-check`, the task gate | `TASK_STAGES`: lint, the structure check (`make structure-check`) and the fast product tests | Every task that changes a runtime file, before it is integrated |
 | `make pr-check`, the full gate | `MILESTONE_STAGES` only, the slow suites. The task gate is not repeated: the helper makes sure one covers the commit, and runs it first when none does | Once, by the task that completes the queue |
 | `make premerge-check`, the resilience gate | `RESILIENCE_STAGES`: operations, backup and restore, upgrade, the release build | Once, with the full gate |
-| `make agent-check` | The structure check and the agent tooling's own tests. No stage of a task | With the task gate of a branch that changes the agent tooling; in the hosted check of the pull request; by hand after a scaffold update |
+| `make agent-check` | The structure check and the agent tooling's own tests. No stage of a task | With the task gate of a branch that changes the agent tooling; in the hosted check of the pull request, beside the documentation check; by hand after a scaffold update |
 
 - **Gate.** `node scripts/agent-local.mjs gate` runs a gate on a committed, clean tree and records the result for the commit. A failed gate records nothing, and integration checks the record.
 - **Reuse.** A recorded gate covers every later commit until a runtime file changes: `gate` then runs nothing and says `reused`, and `--force` runs it anyway. The review, the completion notes and the owner's test document, committed after a gate, keep its result.
-- **The end of the queue is enforced.** `finish` refuses the task that completes the queue unless a `pr-check` and a `premerge-check` cover its commit and its branch contains the base branch.
-- **Not applicable.** A gate without stages fails. The single word `none`, as in `RESILIENCE_STAGES := none`, declares a gate not applicable to the product: it passes, and is recorded and reported as such.
+- **Documentation.** It needs no gate and keeps a recorded one, so it is checked where it is integrated: `finish` and `integrate` run the documentation check on the commit they integrate, unless a task gate on that very commit ran it, and move nothing while a link is broken.
+- **The end of the queue is enforced.** `finish` refuses the task that completes the queue unless a `pr-check` and a `premerge-check` cover its commit, and while the base branch has commits its branch lacks: the local one, or `origin`'s as last fetched.
+- **Stages.** A stage is a `.PHONY` make target with a recipe: a gate refuses one that make has nothing to run for, and a gate without stages fails. The single word `none`, as in `RESILIENCE_STAGES := none`, declares the full or the resilience gate not applicable to the product: it passes, and is recorded and reported as such. The task gate cannot be declared `none`.
 - **Review.** The diff on two axes, Standards and Spec, in one pass by the `kordal-task-reviewer` agent, in a context that has not seen the implementation, read-only. The milestone review uses two reviewers, one per axis. Recorded in the plan; an unreviewed task cannot be finished.
 - **No slow testing per task.** A task runs lint, the structure check and unit tests only. Browser, device and end-to-end tests are written in the task and run once, at the end.
 - **Parallel rounds.** `/kordal-build-all` delivers `READY` tasks that touch different files side by side, up to five in a round. One `claim` starts every branch from the same revision; each task gets a worktree and a `kordal-builder`, which stops once its completed plan is committed; one `integrate` then takes the round, all or nothing. It makes the checks of `finish` for every task, merges the branches without touching a checkout, runs one combined task gate on the assembled commit when more than one task changed runtime files, and advances the integration branch in one step. A conflict or a failed combined gate moves nothing: that round's tasks are finished one at a time. The task that completes the queue is never part of a round.
@@ -207,7 +210,7 @@ Per task: claim, implement, gate, review, complete, integrate, report. In the pr
 - **Budget.** The scope names the test data size and how long the gates may take; `gate` reports its duration and says when it went over.
 - **Timings.** The helper logs every claim, gate, integration and publication in the Git directory: local, never pushed. `node scripts/agent-local.mjs timings` prints where the time went: per task from claim to integration, with its implementation, its task gates and its review and completion; then the combined gates of the rounds, the full and the resilience gate with their stages, and GitHub publication.
 
-A milestone ends with its acceptance task, which `docs/agents/acceptance.md` holds: the full check (both gates, then a walk through every task's flow on each target device), a review of the whole milestone, whose high and medium findings block acceptance, then a test list for the owner in `docs/product/milestone<N>-test.md`. Each failure the owner reports becomes a task. Only after the owner accepts does `/kordal-build-ship` open the pull request.
+A milestone ends with its acceptance task, which `docs/agents/acceptance.md` holds: the full check (both gates, then a walk through every task's flow on each target device), a review of the whole milestone, whose high and medium findings block acceptance, then a test list for the owner in `docs/product/milestone<N>-test.md`. Each failure the owner reports becomes a task. Only after the owner accepts does `/kordal-build-ship` open the pull request. It fetches first, and stops where the base branch on `origin` holds commits the milestone lacks, such as a quick change merged since the acceptance: you accept that GitHub merges them with the milestone, a combination nothing tested, or a task brings them in and you repeat the acceptance for what changed.
 
 ## GitHub
 
@@ -217,13 +220,13 @@ Optional, asked once when a project is scaffolded. With it:
 - one status label per issue: `waiting`, `blocked`, `ready`, `in-progress`, `done`;
 - an issue closes when its task is integrated.
 
-The updates are targeted. `claim`, `finish` and `integrate` each update GitHub once per command, so a round of five tasks updates it twice, at its claim and at its integration. They push the integration branch, unless `origin` already holds it, and reconcile only the issues they affect, those of the tasks they name and of the tasks that depend on them directly, with one read and at most one write per issue. `--no-publish` defers the update.
+The updates are targeted. `claim`, `finish` and `integrate` each update GitHub once per command, so a round of five tasks updates it twice, at its claim and at its integration. They push the integration branch, and skip the push only when `origin`'s branch, as last fetched, already equals the local tip. They reconcile only the issues they affect, those of the tasks they name and of the tasks that depend on them directly, with one read and at most one write per issue: its state, status label, body and title. An issue that is in no GitHub milestone yet, one you wrote and a feature adopted, makes the update a full one. A task that has no issue yet gets one when it is claimed, on its own: a claim of several tasks refuses it, and its number is committed on its branch. `--no-publish` defers the update.
 
 `node scripts/agent-local.mjs publish` is the full one: it pushes, and reconciles the labels, the GitHub milestone and every issue. `node scripts/agent-issues.mjs sync --check` changes nothing and fails on any difference.
 
 When GitHub cannot be reached, or the update was deferred, the local result stands, and `next` reports that GitHub is out of sync until `publish` succeeds.
 
-The base branch receives one pull request per milestone or feature. A push of the integration branch starts no hosted check.
+The base branch receives one pull request per milestone or feature. A push of the integration branch starts no hosted check. A clone that lacks the integration branch takes it from `origin`: `node scripts/agent-local.mjs start`.
 
 ## The base branch
 
@@ -252,7 +255,7 @@ The name is the repository's own (`master`, `trunk`, `release-1.x`) and differs 
 | `scripts/*.test.mjs`, `scripts/agent-issues.fake-gh.mjs` | The tooling's own tests, and the fake `gh` the mirror is tested against |
 | `tests/integration/check-docs.sh` | Checks Markdown links, anchors and references |
 | `Makefile` | `lint`, `test`, `structure-check`, `agent-check`, `task-check`, `pr-check`, `premerge-check` |
-| `.github/` | The hosted check `Agent structure`, which runs `make agent-check` on a pull request; the pull request template |
+| `.github/` | The hosted check `Agent structure`, which runs `make agent-check` and the documentation check on a pull request; the pull request template |
 | `.gitignore` | Environment files, dependencies, build output |
 
 A new project has no product checks: `make test` fails until the first task adds tests, and `make pr-check` and `make premerge-check` fail until the task that bootstraps the development platform gives each its stages or declares `none`.

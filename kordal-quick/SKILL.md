@@ -32,7 +32,13 @@ Every condition must hold. Tick each against the request, opening code only wher
 
 A condition that fails, or that you cannot tick with certainty, ends the run: [escalate](#escalate). A request is never stretched to fit.
 
-**During an active milestone**, in a scaffolded project whose integration branch (`integration_branch` of `docs/plans/backlog.json`) holds work the base branch lacks: `git diff --name-only <base>...<integration>` lists the files the milestone has changed. A change that touches none of them is still QUICK, from the base branch. One that touches any joins the milestone instead: `/kordal-plan-feature`, or `/kordal-bug` for a bug.
+**During an active milestone or feature** the change must stay clear of it. A scaffolded project (it has `docs/plans/backlog.json`) says whether one is active with `node scripts/agent-local.mjs phase`, the one test "How work enters" of its `AGENTS.md` defines:
+
+- **`delivering`**: `git diff --name-only <base>...<integration>` lists the files the milestone has changed, between the base branch of step 3 and the manifest's `integration_branch`. A change that touches none of them is still QUICK, from the base branch. One that touches any joins the milestone instead: `/kordal-plan-feature`, or `/kordal-bug` for a bug.
+- **`between`**: nothing is active.
+- **The helper's usage text**: the scaffold is older than this skill. Apply the file test wherever the integration branch exists, and tell the owner that `/kordal-plan-update` is due.
+
+A repository without the scaffold has no milestone.
 
 Done when every box is ticked, or the run has ended with the failed condition named.
 
@@ -44,8 +50,8 @@ Read only what the change sits in: the code it touches, the existing implementat
 
 The working tree has to be clean (`git status --porcelain` prints nothing); one that is not ends the run with the owner told what is in it. `git fetch`, then find the base branch:
 
-- **a scaffolded project** (it has `docs/plans/backlog.json`): `node scripts/agent-local.mjs base`, the `base_branch` of the manifest;
-- **any other repository**: its default branch, `gh repo view --json defaultBranchRef --jq .defaultBranchRef.name`, or `git symbolic-ref --short refs/remotes/origin/HEAD`.
+- **a scaffolded project** (it has `docs/plans/backlog.json`): `node scripts/agent-local.mjs base`. Where an older helper answers with its usage text, it is `base_branch` of the manifest, `main` without one;
+- **any other repository**: its default branch, `gh repo view --json defaultBranchRef --jq .defaultBranchRef.name`, or `git symbolic-ref --short refs/remotes/origin/HEAD | sed 's|^origin/||'`.
 
 Branch from its fetched tip: `git switch -c quick/<short-description> --no-track origin/<base>`, as in `quick/fix-empty-state-label`. Done when the checkout is on that branch and you have noted the branch it was on before.
 
@@ -65,9 +71,9 @@ A failure your change caused is fixed before going on. Done when each command ha
 
 ## 6. Review your diff
 
-`git diff` and `git status`, read whole, once, as the reviewer the change will not otherwise have:
+`git add -A`, then `git status` and `git diff --cached`: the staged set is the whole change, new files included, and what the commit takes. Read it whole, once, as the reviewer the change will not otherwise have:
 
-- it does what was asked, and nothing else: no debug code, stray file or reformatted line you did not otherwise touch;
+- it does what was asked, and nothing else: no debug code, stray file or reformatted line you did not otherwise touch. Remove what does not belong and stage again;
 - no key, token, password or `.env` content;
 - every condition of step 1 still holds for what the diff actually does.
 
@@ -103,10 +109,10 @@ Give the owner the pull request's URL, the validation results, and the branch th
 
 ## Escalate
 
-At any step, as soon as a condition of step 1 fails or turns uncertain. Stop, tell the owner which condition and what showed it, and name the next level:
+At any step, as soon as a condition of step 1 fails or turns uncertain. Stop, tell the owner which condition and what showed it, and name the next level, the first that applies:
 
+- `/kordal-issue <request>`: the repository has no scaffold (no `docs/plans/backlog.json`);
 - `/kordal-plan-feature <request>`: it fits one to three tasks and needs no new architecture decision;
-- `/kordal-plan`: it is larger, or needs an architecture decision;
-- `/kordal-issue <request>`: the repository has no scaffold.
+- `/kordal-plan`: it is larger, or needs an architecture decision.
 
 Commit work already done on its `quick/` branch, unpushed and without a pull request, and name the branch: the next level decides what to take from it.

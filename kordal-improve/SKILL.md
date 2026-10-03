@@ -38,4 +38,4 @@ Write `docs/product/improvements/<date>-<slug>.md`: the question, the criteria, 
 - **Later**: the report keeps it as a candidate for the next milestone.
 - **No**: the report keeps the reason, so the proposal is not made again.
 
-The report is a planning document: commit it on the base branch when this checkout is on it (`node scripts/agent-local.mjs base` prints it; in a repository without the scaffold, the default branch); otherwise leave it for the owner and say where it is.
+The report is a planning document: commit it on the base branch when this checkout is on it (`node scripts/agent-local.mjs base` prints it; where an older helper answers with its usage text, `base_branch` of `docs/plans/backlog.json`, `main` without one; in a repository without the scaffold, the default branch); otherwise leave it for the owner and say where it is.

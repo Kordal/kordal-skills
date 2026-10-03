@@ -40,7 +40,7 @@ ADRs: none
 
 ## Affected Components
 
-<!-- Services, contracts, apps, and docs this task touches. -->
+<!-- Services, contracts, apps, and docs this task touches; `Makefile` where it adds a stage or a target there, since tasks of one round touch different files. -->
 
 ## Implementation Steps
 
@@ -48,7 +48,7 @@ ADRs: none
 
 ## Tests
 
-<!-- Unit tests, which the task gate runs. Then the slower tests (browser, device, end-to-end, measurement): the task writes them and adds their stage to MILESTONE_STAGES; they run once, at the end of the milestone. -->
+<!-- Unit tests, which the task gate runs. Then the slower tests (browser, device, end-to-end, measurement): the task writes them where a stage of MILESTONE_STAGES picks them up, and adds a stage only for a new kind of check; they run once, at the end of the milestone. -->
 
 ## Review
 

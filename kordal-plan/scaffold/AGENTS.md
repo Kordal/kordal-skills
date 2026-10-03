@@ -52,7 +52,7 @@ Route a request before acting on it:
 
 QUICK → FEATURE → MILESTONE is one ladder: each level takes what the level below must refuse.
 
-During an active milestone (the integration branch holds work the base branch lacks): a QUICK change that touches no file the milestone has changed (`git diff --name-only <base>...<integration>`) is still QUICK, from the base branch; anything else joins the milestone: a feature through `/kordal-plan-feature` (its tasks join the queue), a bug through `/kordal-bug` (it becomes a task), a reviewed issue through `/kordal-plan-feature <number>`. Larger work waits for the next milestone's planning.
+During an active milestone or feature (`node scripts/agent-local.mjs phase` prints `delivering` and the reason: a task of the manifest is unfinished, or the integration branch holds work the base branch lacks): a QUICK change that touches no file the milestone has changed (`git diff --name-only <base>...<integration>`) is still QUICK, from the base branch; anything else joins the milestone: a feature through `/kordal-plan-feature` (its tasks join the queue), a bug through `/kordal-bug` (it becomes a task), a reviewed issue through `/kordal-plan-feature <number>`. Larger work waits for the next milestone's planning. The command prints `between` otherwise; it decides by merging, not by ancestry, so a squash- or rebase-merged pull request counts as merged. A repository without the scaffold has no milestone.
 
 ## Agent workflow
 

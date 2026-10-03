@@ -21,10 +21,10 @@ Look for the same bug: `gh issue list --state open --search "<key words>"` and `
 
 Then the code that will receive the fix. The working tree has to be clean; one that is not ends the run with the owner told what is in it. `git fetch`, and:
 
-- **A milestone in progress** (`docs/plans/backlog.json` names an `integration_branch` the base branch does not contain): the target is the integration branch.
-- **Otherwise**: the target is the base branch, unless the issue or `AGENTS.md` names another.
+- **A milestone or feature in progress** (`node scripts/agent-local.mjs phase` prints `delivering`, the one test "How work enters" of the project's `AGENTS.md` defines): the target is the integration branch, the `integration_branch` of `docs/plans/backlog.json`.
+- **Otherwise** (it prints `between`, or the repository has no scaffold and so no milestone): the target is the base branch, unless the issue or `AGENTS.md` names another.
 
-The base branch is what `node scripts/agent-local.mjs base` prints, the `base_branch` of that manifest; a repository without the scaffold uses its default branch.
+The base branch is what `node scripts/agent-local.mjs base` prints, the `base_branch` of that manifest; a repository without the scaffold uses its default branch. A helper that answers `phase` or `base` with its usage text belongs to a scaffold older than this skill: tell the owner to run `/kordal-plan-update`, and end the run.
 
 Check the target out and update it: the bug is reproduced on the code as it is now. The integration branch is checked out detached (`git switch --detach <integration branch>`), because no worktree may hold that branch itself.
 
@@ -56,10 +56,11 @@ The first row that applies:
 | Finding | Route |
 | --- | --- |
 | The cause lies outside this repository: a dependency, the environment, the data | Tell the owner the cause and what would fix it there; end the run |
-| The owner wants behaviour the product never promised | A feature: name its level, `/kordal-quick`, `/kordal-plan-feature` or `/kordal-plan`, given the report; end the run |
+| The owner wants behaviour the product never promised | A feature: name its level, `/kordal-quick`, `/kordal-plan-feature` or `/kordal-plan`, given the report. In a repository without the scaffold, say that the last two scaffold it first, and that `/kordal-issue` takes it should the owner ask for an issue instead. End the run |
 | The fix needs a product decision: which of two behaviours is right, permissions, a data change, an API contract | One question with `AskUserQuestion` where a sentence answers it; otherwise `/kordal-issue`, given the reproduction and the cause, and end the run |
-| The fix needs an architectural change, or several changes that can each be delivered on their own | `/kordal-issue`, given the reproduction and the cause; end the run |
-| A milestone is in progress | The fix is a task: "Add a task during delivery" in `docs/agents/workflow.md`. Its plan holds the reproduction, the cause and, as acceptance criteria, the reproduction turned green; the reproduction goes onto the task's branch. Then deliver the task by `${CLAUDE_SKILL_DIR}/../kordal-build/SKILL.md` with the task's ID as its arguments: its sections "Updates", "Deliver one task", "The review" and "Stop and ask". The run ends with that skill's report |
+| The fix needs an architectural change | A milestone's work: `/kordal-plan`, given the reproduction and the cause; in a repository without the scaffold `/kordal-issue`; end the run |
+| The fix needs several changes that can each be delivered on their own | `/kordal-issue`, given the reproduction and the cause; end the run |
+| A milestone or feature is in progress, as step 1 found | The fix is a task: "Add a task during delivery" in `docs/agents/workflow.md`. Its plan holds the reproduction, the cause and, as acceptance criteria, the reproduction turned green; the reproduction goes onto the task's branch. Then deliver the task by `${CLAUDE_SKILL_DIR}/../kordal-build/SKILL.md` with the task's ID as its arguments: its sections "Updates", "Deliver one task", "The review" and "Stop and ask". The run ends with that skill's report |
 | None of these | Step 5 |
 
 ## 5. Fix

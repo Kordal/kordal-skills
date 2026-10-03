@@ -1,6 +1,6 @@
 ---
 name: kordal-build
-description: Deliver the planned milestone through the project's delivery workflow - the next ready task, a named task, the whole queue, or the final push.
+description: Deliver the planned milestone through the project's delivery workflow - the next ready task, a named task, or the whole queue.
 disable-model-invocation: false
 argument-hint: "[task ID | all | all serial | ship]"
 ---
@@ -13,9 +13,14 @@ Deliver the tasks `/kordal-plan` prepared. `$ARGUMENTS` picks the mode:
 | a task ID | [Deliver one task](#deliver-one-task): that one |
 | `all` | [Work the queue](#work-the-queue), independent tasks in parallel |
 | `all serial` | [Work the queue](#work-the-queue), one task at a time |
-| `ship` | [Ship](#ship): open the pull request of the milestone or the feature |
+| `ship` | [Ship](#ship): open the pull request of the milestone or the feature, when the owner typed the command |
 
-The project's `docs/agents/workflow.md` is the contract for delivering a task: read it now. `docs/agents/acceptance.md` holds the acceptance task, a standalone feature's acceptance and the pull request: read it when the run reaches one of them, and only then. `AGENTS.md` reaches you through `CLAUDE.md`; `docs/agents/planning.md` is no part of delivery. This skill adds what a Claude session needs on top: what the owner hears, whom to dispatch, how to run a round. A project without `docs/agents/workflow.md` is planned first: tell the owner to run `/kordal-plan`.
+Place the project before any mode:
+
+- **No `docs/agents/workflow.md`**: it is planned first. Tell the owner to run `/kordal-plan`, and stop.
+- **A scaffold older than this skill**: `node scripts/agent-local.mjs phase` answers with the helper's usage text, or `docs/agents/acceptance.md` is missing. Tell the owner to run `/kordal-plan-update`, and stop.
+
+The project's `docs/agents/workflow.md` is the contract for delivering a task: read it now. `docs/agents/acceptance.md` holds the acceptance task, a standalone feature's acceptance and the pull request: read it when the run reaches one of them, and only then. `AGENTS.md` reaches you through `CLAUDE.md`; `docs/agents/planning.md` is no part of delivery. This skill adds what a Claude session needs on top: what the owner hears, whom to dispatch, how to run a round.
 
 ## Updates
 
@@ -64,14 +69,14 @@ Open with the plan of the run, before the first task, in one short message:
 
 Then deliver the queue in rounds, until `next` lists no `READY` task and none this checkout left `CLAIMED`. A `kordal-builder` agent delivers each task. Its steps stay inside its own context, so the line that opens a round and the reports that close it are the owner's [updates](#updates).
 
-1. **Pick the round**: the `READY` tasks, up to five, whose plans' Affected Components do not overlap. Tasks that touch the same files go into separate rounds, in manifest order. The task that owes the owner a [first look](#stop-and-ask) is a round of its own. `all serial` picks one task per round. Tasks an interrupted run left `CLAIMED` come first: each is resumed where its branch is checked out.
+1. **Pick the round**: the `READY` tasks, up to five, whose plans' Affected Components do not overlap; the Makefile counts as a file there, as "A parallel round" of the workflow says. Tasks that touch the same files go into separate rounds, in manifest order. Two kinds of task are a round of their own: the one that owes the owner a [first look](#stop-and-ask), and, where the manifest names a `repository`, one whose entry has `"issue": null`, which step 1 of that section keeps out of a claim of several. `all serial` picks one task per round. Tasks an interrupted run left `CLAIMED` come first: each is resumed where its branch is checked out.
 2. **Open it** with one line to the owner: `Round 2 · CAP-003, CAP-005 in parallel · 4 of 6 tasks left`.
 3. **A round of one task** is delivered serially, in this checkout: dispatch its builder in the foreground, "Deliver task `<ID>` in `<project root>` on your own: claim it, deliver it and `finish` it." Done when `next` no longer lists the task; continue at step 8.
 4. **Claim** a round of several tasks in one command, `node scripts/agent-local.mjs claim <ID> <ID>...`, so that every branch starts from the same revision and GitHub is updated once. Give each task a worktree next to the project: `git worktree add ../<project>.worktrees/<id> task/<id>`.
 5. **Dispatch** one builder per task, all in one message so that they run side by side, each in the foreground: "Deliver task `<ID>` in `<its worktree>` as one task of a round. It is already claimed there, on `task/<id>`. Stop once its completed plan is committed, without `finish`, and report 'ready for integration' with the commit, the gate's result and the report."
 6. **Verify** each result yourself, in its worktree: `git status --porcelain` prints nothing; the completed plan is committed (`git cat-file -e HEAD:docs/plans/completed/<ID>-<slug>.md`); and, for a task that changed a runtime file, `node scripts/agent-local.mjs gate` answers `reused`: the builder's gate covers the commit. A task its builder left short of that is yours to complete there, by "Deliver one task" up to step 5.
-7. **Integrate** the round in one command, from this checkout, on a clean tree: `node scripts/agent-local.mjs integrate <ID> <ID>...`. It moves every task or none; read the files a `NOTE` names as changed by more than one task. Where it refuses, tell the owner why and fall back to serial `finish`, each task from its worktree, as "A parallel round" of the workflow says: after a conflict, integrate the other tasks first, then merge, gate and `finish` the conflicting one; after a failed combined gate, `finish` them one at a time. Where a command warns that GitHub was not updated, run `node scripts/agent-local.mjs publish`.
-8. **Report.** Post the report of each task the round integrated on its issue, as the workflow's step 7 says; a builder that finished on its own has posted its own. Remove the worktrees you added for the round, `git worktree remove ../<project>.worktrees/<id>`, never forced: one that refuses holds uncommitted work, so leave it and tell the owner. Relay the reports in task order with the output of `node scripts/agent-local.mjs timings`, and start the next round without waiting for an answer, except after a first look.
+7. **Integrate** the round in one command, from this checkout, on a clean tree: `node scripts/agent-local.mjs integrate <ID> <ID>...`. It moves every task or none; read the files a `NOTE` names as changed by more than one task. Where it refuses, tell the owner why and fall back to serial `finish`, each task from its worktree, as "A parallel round" of the workflow says: after a conflict, integrate the other tasks first, then merge, gate and `finish` the conflicting one; after a failed combined gate, `finish` them one at a time.
+8. **Report.** Where `next` reports that GitHub is out of sync, run `node scripts/agent-local.mjs publish`. Post the report of each task the round integrated on its issue, as the workflow's step 7 says; a builder that finished on its own has posted its own. Remove the worktrees you added for the round as step 5 of "A parallel round" of the workflow says. Relay the reports in task order with the output of `node scripts/agent-local.mjs timings`, and start the next round without waiting for an answer, except after a first look.
 
 Where the `kordal-builder` agent is missing, a generic subagent takes the same prompt, with this added: its procedure is "Deliver one task" of `docs/agents/workflow.md`, the reviewer of step 4 is a subagent that only reads, and it stops and reports at the conditions under "Stop and ask", which you list for it.
 
@@ -97,10 +102,10 @@ A feature on its own `feature/<slug>` branch has no acceptance task: its last ta
 
 ## Ship
 
-Ship only when the owner typed `/kordal-build-ship` or `/kordal-build ship`: the pull request to the base branch (`node scripts/agent-local.mjs base`) is the release of the milestone or the feature, so it is opened on the owner's explicit command and in no other mode.
+Ship only when the owner typed `/kordal-build-ship` or `/kordal-build ship` in this conversation: the pull request to the base branch (`node scripts/agent-local.mjs base`) is the release of the milestone or the feature, so it is opened on the owner's explicit command and in no other mode. Where you loaded this skill yourself with `ship`, open nothing: tell the owner `/kordal-build-ship` is next, and stop.
 
 1. Confirm the gate before the pull request: `next` lists nothing, and the test document on the integration branch records the owner's acceptance: `docs/product/milestone<N>-test.md`, with the milestone review, or `docs/product/feature-<slug>-test.md`. Where one is missing, say which and stop.
-2. Follow "Open the pull request" of `docs/agents/acceptance.md`.
+2. Follow "Open the pull request" of `docs/agents/acceptance.md`, from its step 1: where the base branch on `origin` holds commits the integration branch lacks, the run stops there with those commits and the owner's two choices.
 3. Shut down what the milestone started on this machine: the test servers, emulators and simulators, app test builds, containers and background processes of this project's checkouts, and the worktrees under `../<project>.worktrees/`. Stop only what this project's delivery started; the owner's installed apps, other projects' stacks and anything you cannot attribute stay untouched, and are listed instead. Stop containers, do not remove their data. A worktree that holds uncommitted work stays, and is listed.
 4. Report the pull request's URL and the state of its checks, what was shut down and what was left running, and stop: the owner merges.
 

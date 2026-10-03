@@ -10,7 +10,7 @@ The last task of every milestone is its acceptance task. It depends on every oth
 
 Everything the tasks did not run, once, on the whole milestone:
 
-1. Bring the base branch (`node scripts/agent-local.mjs base`) in when it moved: fetch where the repository has a remote, and merge `origin/<base>`, or the local branch without a remote, into this branch where it holds commits this branch lacks. The owner then accepts what the base branch will hold after the merge.
+1. Bring the base branch (`node scripts/agent-local.mjs base`) in when it moved: `git fetch` where the repository has a remote, and merge `origin/<base>`, or the local base branch without a remote, into this branch where it holds commits this branch lacks. The owner then accepts what the base branch will hold after the merge.
 2. `node scripts/agent-local.mjs gate pr-check`, then `node scripts/agent-local.mjs gate premerge-check`: every slow suite, the ones the tasks wrote included.
 3. Start the product and walk every task's Flow as a user would, on each device the milestone targets: the journeys and their failure paths.
 
@@ -37,7 +37,7 @@ Start the product, hand the owner the list and stop: the milestone waits for the
 
 ### Finish
 
-Complete the plan, its Review naming the milestone review of the test document, and run `node scripts/agent-local.mjs finish <ID>`. It demands that a `pr-check` and a `premerge-check` cover the runtime state the owner tested, and that the branch contains the base branch. Documentation recorded after the gates (the reviews, the checklist, the owner's acceptance) needs no new gate. After a runtime fix, `gate pr-check` and `gate premerge-check` run again; each returns at once, saying `reused`, when nothing runtime changed since it passed. Done when `finish` prints that the task is on the integration branch; tell the owner that the pull request is next.
+Complete the plan, its Review naming the milestone review of the test document. `git fetch` again, then run `node scripts/agent-local.mjs finish <ID>`. It demands that a `pr-check` and a `premerge-check` cover the runtime state the owner tested, and refuses while the base branch, the local one or `origin/<base>` as last fetched, has commits this branch lacks: merge it as step 1 of the full check says, run both gates, and hand a runtime change it brought back to the owner before finishing. Documentation recorded after the gates (the reviews, the checklist, the owner's acceptance) needs no new gate: `finish` runs the documentation check on it. After a runtime fix, `gate pr-check` and `gate premerge-check` run again; each returns at once, saying `reused`, when nothing runtime changed since it passed. Done when `finish` prints that the task is on the integration branch; tell the owner that the pull request is next.
 
 ## A standalone feature
 
@@ -45,15 +45,16 @@ A feature planned while nothing else is in progress has its own integration bran
 
 1. Run the full check as the acceptance task does: bring the base branch in when it moved, run both gates, then walk the feature's Flows in the running product. Where the feature has more than one task, review the whole feature, the diff from the base branch, graded as the milestone review: fix its high and medium findings on this branch and gate again. Record it in the task's Review.
 2. Write `docs/product/feature-<slug>-test.md`: how to start the product from this branch, a checklist of what to do and what the owner should see, and the failure cases to try. Start the product, hand the owner the list and stop.
-3. Fix what the owner reports on this branch, run both gates again and hand the list back. When the owner says the feature passes, record that in the test document with the date and the tested commit, complete the plan and `finish`: the gates cover what the owner tested, and the documentation recorded since needs no new gate.
+3. Fix what the owner reports on this branch, run both gates again and hand the list back. When the owner says the feature passes, record that in the test document with the date and the tested commit, complete the plan and finish as [Finish](#finish) says, `git fetch` first: the gates cover what the owner tested, and the documentation recorded since needs no new gate.
 
 ## Open the pull request
 
 The pull request is the release of the milestone or the feature: open it on the owner's command, when `next` lists nothing and the test document, `docs/product/milestone<N>-test.md` or `docs/product/feature-<slug>-test.md`, records the owner's acceptance, and for a milestone its review.
 
-1. With a GitHub mirror, run `node scripts/agent-issues.mjs sync --check`: the mirror matches before the pull request names its issues. `node scripts/agent-local.mjs publish` repairs a difference.
-2. Open one pull request from the integration branch, which `finish` has pushed, to the base branch, with the Summary and Merge Danger of the [template](../../.github/pull_request_template.md); the Summary lists every task with its issue.
-3. The hosted check `Agent structure` runs `make agent-check` on it. A failed, missing, cancelled or skipped check is not a pass.
-4. Report the pull request and the state of its checks to the owner, who merges it.
+1. `git fetch`. When `origin/<base>` has commits the integration branch lacks (`git log --oneline <integration>..origin/<base>` prints them), stop and show them to the owner: they arrived after the acceptance, as a quick change or a hotfix does. The owner decides: accept that GitHub merges them with the milestone, a combination nothing tested; or have a task bring them in. That task is [added](workflow.md#add-a-task-during-delivery), merges `origin/<base>` on its branch and completes the queue: run both gates there, have the owner repeat the acceptance for what changed, record it in the test document, then `finish`.
+2. With a GitHub mirror, run `node scripts/agent-issues.mjs sync --check`: the mirror matches before the pull request names its issues. `node scripts/agent-local.mjs publish` repairs a difference.
+3. Open one pull request from the integration branch, which `finish` has pushed, to the base branch, with the Summary and Merge Danger of the [template](../../.github/pull_request_template.md); the Summary lists every task with its issue.
+4. The hosted check `Agent structure` runs `make agent-check` and the documentation check on it. A failed, missing, cancelled or skipped check is not a pass.
+5. Report the pull request and the state of its checks to the owner, who merges it. What reaches the base branch after this fetch is not seen here: the owner checks that the pull request is up to date with it before merging.
 
 Without a GitHub mirror, the owner decides how the base branch receives the integration branch.

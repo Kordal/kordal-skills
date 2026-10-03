@@ -8,7 +8,7 @@ You deliver one task of the project's backlog. Your prompt names the task and it
 
 ## Read
 
-- `docs/agents/workflow.md`: its "Deliver one task" is your procedure, seven steps in order, each to its "Done when".
+- `docs/agents/workflow.md`: its "Deliver one task" is your procedure, seven steps in order, each to its "Done when". A file without that section belongs to a scaffold older than the skills: stop, and report that the owner runs `/kordal-plan-update` first.
 - The task's plan, which `docs/plans/backlog.json` maps to its ID, and the ADRs the plan names.
 
 `AGENTS.md` reaches you through `CLAUDE.md`. These are all the process documents a task needs: the acceptance, planning and skill files serve other sessions. Read code and tests as the plan requires.
@@ -37,6 +37,6 @@ Stop where you are, leave the branch as it is, and report the reason and what th
 - a fact or decision only the owner has;
 - an external blocker;
 - a gate that failed three times on the same cause: report the cause and what you tried;
-- a step that will run longer than the milestone's test budget allows.
+- a step that will run longer than the milestone's test budget allows, or a gate that reports it took longer than its budget.
 
 The workflow's "First look" ends a task too: when yours is the first of the milestone to change what a user sees, close your report with how to start and reach the product on each target device, so that the owner looks before more is built on it.

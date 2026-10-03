@@ -5,7 +5,7 @@ disable-model-invocation: false
 argument-hint: "<issue number or URL>"
 ---
 
-Implement issue `$ARGUMENTS` as it was approved: the smallest maintainable change that satisfies every acceptance criterion. The run ends at an open pull request labelled `needs-pr-review`; approval and merge belong to the PR reviewer and the owner. With no issue named, list those ready (`gh issue list --label ready-for-dev`) and ask which. An issue whose pull request is open (`gh issue view <number> --json closedByPullRequestsReferences`) goes to [Review feedback](#review-feedback).
+Implement issue `$ARGUMENTS` as it was approved: the smallest maintainable change that satisfies every acceptance criterion. The run ends at an open pull request labelled `needs-pr-review`; approval and merge belong to the PR reviewer and the owner. With no issue named, list those ready (`gh issue list --label ready-for-dev --limit 200`; a listing of exactly 200 may be cut short: say so) and ask which. An issue whose pull request is open (`gh issue view <number> --json closedByPullRequestsReferences`) goes to [Review feedback](#review-feedback).
 
 One rule decides every open point on the way:
 
@@ -28,9 +28,11 @@ Start only when all of these hold:
 - a comment that counts holds an Issue Review with the result `READY`, and its `createdAt` is later than the issue's `lastEditedAt` (`null`: the body was never edited);
 - the issue has acceptance criteria;
 - no blocking question is open, in the body or in a comment that counts;
-- the repository is not delivering a milestone: it has no `docs/plans/backlog.json`, or the `integration_branch` that file names is contained in the base branch. The base branch is what `node scripts/agent-local.mjs base` prints, the `base_branch` of that manifest; a repository without the scaffold uses its default branch. A milestone in progress takes the issue in as a task: `/kordal-plan-feature <number>`.
+- the repository is not delivering a milestone or a feature: it has no `docs/plans/backlog.json`, or `node scripts/agent-local.mjs phase` prints `between`, the one test "How work enters" of its `AGENTS.md` defines. One in progress takes the issue in as a task: `/kordal-plan-feature <number>`. A helper that answers `phase` with its usage text belongs to a scaffold older than this skill: `/kordal-plan-update` comes first.
 
 When one fails, tell the owner which one and what has to happen first, and end the run.
+
+The base branch, in the steps below, is what `node scripts/agent-local.mjs base` prints, the `base_branch` of that manifest; a repository without the scaffold uses its default branch.
 
 ## 2. Read
 
@@ -87,7 +89,7 @@ Done when every check that ran has a recorded result and every criterion has evi
 
 ## 7. Review your diff
 
-`git diff <target>...` and `git status`, read whole. Remove what does not belong: an accidental change, debug code, commented-out code, a temporary or generated file, excess logging, formatting of lines you did not otherwise touch, a stray TODO, an unneeded dependency.
+`git add -A`, then `git status` and `git diff --cached $(git merge-base <target> HEAD)`, read whole: the committed and the staged work together, from the branch point, new files included. Remove what does not belong, and stage again: an accidental change, debug code, commented-out code, a temporary or generated file, excess logging, formatting of lines you did not otherwise touch, a stray TODO, an unneeded dependency.
 
 Secrets stay out: no key, token, password, private key or `.env` content in any commit.
 
@@ -166,6 +168,6 @@ For a product decision the issue leaves open, and for each conflict of step 3. S
 
 Sort every comment that counts: blocking or optional. Implement the legitimate ones. A request that contradicts the approved issue, the repository's architecture, a security requirement or an established convention gets a reply naming the conflict instead of a change. A request that widens the issue becomes a follow-up opportunity.
 
-Run step 6 and step 7 again, commit, and push new commits on top. Reply to each comment with what changed or why it did not: an inline comment with `gh api repos/{owner}/{repo}/pulls/<PR number>/comments/<comment id>/replies -f body="<reply>"`, the others in one `gh pr comment <PR number> --body-file <file>`. Update the Validation section of the pull request, and set `needs-pr-review` on it again where a reviewer removed it.
+Run step 6 and step 7 again, commit, and push new commits on top. Reply to each comment with what changed or why it did not: an inline comment with `gh api repos/{owner}/{repo}/pulls/<PR number>/comments/<comment id>/replies -f body="<reply>"`, the others in one `gh pr comment <PR number> --body-file <file>`. Update the Validation section of the pull request, and set `needs-pr-review` on it again where a reviewer removed it, after `bash ${CLAUDE_SKILL_DIR}/../kordal-issue/labels.sh`: `gh pr edit <PR number> --add-label needs-pr-review`.
 
 Done when every comment that counts has a change or a reply.

@@ -1021,6 +1021,9 @@ scenario('phase says whether work is under way, also after a squash merge', t =>
   f.write('src/later.js', 'export const later = 1;\n');
   f.commit('the base branch moves on');
   assert.equal(f.cli(['phase']).stdout, 'between: every task is done and main holds all of milestone1\n');
+  // The merged branches are deleted, as GitHub does after a merge: the finished tasks are on the base branch.
+  for (const branch of ['milestone1', 'task/cap-001', 'task/cap-002']) f.git('branch', '--delete', '--force', branch);
+  assert.equal(f.cli(['phase']).stdout, 'between: every task is done and main holds all of milestone1\n');
 });
 scenario('the last task must contain origin\'s base branch too: a pull request merged on GitHub moves only that one', t => {
   const f = fixture(t);
