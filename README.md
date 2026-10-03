@@ -1,6 +1,6 @@
 # kordal-skills
 
-[Claude Code](https://claude.com/claude-code) skills that plan and deliver a product with agents: `/kordal-plan` decides what to build, `/kordal-build` builds it, `/kordal-improve` finds what is worth improving. Four agents do the delivery, review and investigation work they dispatch. In a milestone the repository of the project is the source of truth and GitHub issues mirror it. Between milestones, and in a repository without the scaffold, `/kordal-issue`, `/kordal-issue-review` and `/kordal-issue-code` take one change [from an issue to a pull request](#from-an-issue-to-a-pull-request).
+[Claude Code](https://claude.com/claude-code) skills that plan and deliver a product with agents: `/kordal-plan` decides what to build, `/kordal-build` builds it, `/kordal-improve` finds what is worth improving. Four agents do the delivery, review and investigation work they dispatch. In a milestone the repository of the project is the source of truth and GitHub issues mirror it. Between milestones, and in a repository without the scaffold, `/kordal-issue`, `/kordal-issue-review` and `/kordal-issue-code` take one change [from an issue to a pull request](#from-an-issue-to-a-pull-request), and `/kordal-bug` takes a bug [from its report to a fix](#fixing-a-bug).
 
 ## Install
 
@@ -15,7 +15,7 @@ Any folder works in place of `~/Development/kordal-skills`. The links make a `gi
 
 Needs Claude Code, `git`, `node`, `make` and, for the GitHub mirror and the issue commands, `gh` logged in. The skills load in Claude Code sessions started after the install.
 
-Planning and the review also call six skills this repository does not ship: `research`, `grilling`, `prototype`, `domain-modeling`, `writing-for-agents` and `code-review`. Where one is missing, Claude does that step itself and says which skill it lacked.
+Planning, the review and the bug fix also call seven skills this repository does not ship: `research`, `grilling`, `prototype`, `domain-modeling`, `writing-for-agents`, `code-review` and `diagnosing-bugs`. Where one is missing, Claude does that step itself and says which skill it lacked.
 
 Every skill and agent runs on the model you choose for the session; none of them sets a model or an effort level. To pin one, add `model:` and `effort:` to the frontmatter of a skill or an agent.
 
@@ -33,6 +33,7 @@ Every skill and agent runs on the model you choose for the session; none of them
 | `/kordal-issue <description>` | Turns a feature request, bug report, improvement idea or chore into a GitHub issue a coding agent can implement: inspects the repository, writes testable acceptance criteria, creates the issue labelled `needs-review` |
 | `/kordal-issue-review <issue>` | Reviews an issue against the repository before development, in a context that did not write it: one result (`READY`, `NEEDS_REWORK`, `NEEDS_INFO`, `TOO_LARGE`, `DUPLICATE`), posted as one comment, and the matching label. Only `READY` sets `ready-for-dev`. Changes no code |
 | `/kordal-issue-code <issue>` | Implements an issue labelled `ready-for-dev`: branch, the smallest change that meets every acceptance criterion, tests, validation, self-review, and a pull request labelled `needs-pr-review`. Escalates a product decision to the issue (`needs-info`) instead of guessing. Never approves or merges |
+| `/kordal-bug <what is wrong, or an issue number>` | Fixes a bug: reproduces it, finds the cause, fixes it under a regression test, and opens a pull request labelled `needs-pr-review`. During a milestone the fix is delivered as a task instead. Sends a feature, a product decision or a fix too large for one change to `/kordal-issue`. Never approves or merges |
 | `/kordal-build` | Delivers the next ready task, or resumes the unfinished one |
 | `/kordal-build <ID>` | Delivers that task |
 | `/kordal-build-all` | Delivers the whole queue, one agent per task; up to five independent tasks in parallel, each in its own worktree |
@@ -88,12 +89,27 @@ An issue carries one state label at a time:
 | `needs-info` | `/kordal-issue-review`, `/kordal-issue-code` | A product decision is missing; answer it on the issue |
 | `duplicate`, `already-implemented` | `/kordal-issue-review` | Another issue holds the work, or the code already does it |
 | `ready-for-dev` | `/kordal-issue-review` alone | A coding agent can implement it as it stands |
-| `in-development` | `/kordal-issue-code` | Being implemented on its branch |
-| `needs-pr-review` | `/kordal-issue-code` | The pull request is open |
+| `in-development` | `/kordal-issue-code`, `/kordal-bug` | Being implemented on its branch |
+| `needs-pr-review` | `/kordal-issue-code`, `/kordal-bug` | The pull request is open |
 
 `/kordal-issue-code` starts only on a `READY` review that is newer than the last edit of the issue's text, and counts only comments by the repository's owner, members and collaborators. An interrupted run, or one that stopped on a question, resumes on its pushed branch.
 
 A project that is delivering a milestone takes no pull request per issue: there the issue joins the milestone with `/kordal-plan-feature <issue number>`, which makes it the first task's issue.
+
+## Fixing a bug
+
+`/kordal-bug The export button downloads an empty file`, or `/kordal-bug 87` for a bug that already has its issue. A bug is behaviour that departs from what the product already promises, so it skips the issue review: its reproduction, turned green, is what done means.
+
+| # | Step | Ends when |
+| --- | --- | --- |
+| 1 | Understand: the report as one sentence that names the promise it breaks | The checkout is on the current target |
+| 2 | Reproduce: one command that goes red on the symptom | It failed the way you described. A bug that stays green ends the run: no fix on a guess |
+| 3 | Cause: the wrong line, proven with a prediction | The cause explains every observation |
+| 4 | Route: a cause outside the repository, a feature, a product decision or a large fix leaves here | The fix is one change |
+| 5 | Fix: the regression test first, then the smallest change at the cause | The test is green and was red before |
+| 6 | Pull request: Bug, Cause, Fix, Regression test, Validation | It is open; you merge it |
+
+While a milestone is being delivered, step 4 turns the fix into a task of that milestone and `/kordal-build` delivers it. Review comments on the pull request are addressed with `/kordal-bug <pull request number>`.
 
 ## Delivering
 

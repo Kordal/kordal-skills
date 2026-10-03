@@ -43,7 +43,7 @@ Introduce another technology only when the active task requires it, with an ADR.
 
 **Before selecting, implementing, resuming or integrating work, read [the agent workflow](docs/agents/workflow.md).** The [backlog manifest](docs/plans/backlog.json) maps task IDs to plans, dependencies and ADRs, and names the integration branch.
 
-A milestone is delivered locally: **no pull request and no reviewer's approval per task.** Main receives one pull request, when the whole milestone is done, and the owner merges it. Between milestones, with the integration branch contained in main, a reviewed issue labelled `ready-for-dev` may arrive as a pull request of its own.
+A milestone is delivered locally: **no pull request and no reviewer's approval per task.** Main receives one pull request, when the whole milestone is done, and the owner merges it. Between milestones, with the integration branch contained in main, a reviewed issue labelled `ready-for-dev`, or a bug fixed by `/kordal-bug`, may arrive as a pull request of its own.
 
 One task, one branch. `node scripts/agent-local.mjs next` lists the queue; `claim <ID>` creates `task/<id>` from the integration branch; `gate` runs `make task-check` and records the pass; `finish <ID>` puts the task on the integration branch. Where the manifest names a GitHub repository, `claim` and `finish` also push the integration branch and update the task's issue; leave every other push to the workflow's steps. Do not commit to the integration branch directly. Read your [role instructions](docs/agents/claude.md) before acting.
 
