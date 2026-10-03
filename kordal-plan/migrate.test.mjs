@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 // migrate.mjs on a project as the scaffold left it before the rename: the
 // manifest's "mvp", the branch mvp1 with a bare origin, mvp1 documents, a
 // task plan that links to them, and a fake gh that holds the milestone "MVP 1".
+// The base branch is main, or the one the manifest names as "base_branch".
 const here = path.dirname(fileURLToPath(import.meta.url));
 const fakeGh = `#!/usr/bin/env node
 const fs = require('fs');
@@ -26,13 +27,13 @@ if (method) {
 fs.writeFileSync(file, JSON.stringify(state));
 console.log(JSON.stringify(out));
 `;
-function fixture(t) {
+function fixture(t, base = 'main') {
   const dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'migrate-')));
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
   const project = path.join(dir, 'project');
   const write = (file, text, mode) => { fs.mkdirSync(path.dirname(path.join(project, file)), { recursive: true }); fs.writeFileSync(path.join(project, file), text, { mode }); };
   const git = (...args) => { const r = spawnSync('git', args, { cwd: project, encoding: 'utf8' }); assert.equal(r.status, 0, r.stderr); return r.stdout.trim(); };
-  write('docs/plans/backlog.json', JSON.stringify({ version: 1, mvp: 1, repository: 'owner/product', integration_branch: 'mvp1', tasks: [{ id: 'FIG-001', title: 'Figure', slug: 'figure', issue: 4, depends_on: [], adrs: [] }] }, null, 2));
+  write('docs/plans/backlog.json', JSON.stringify({ version: 1, mvp: 1, repository: 'owner/product', integration_branch: 'mvp1', ...(base === 'main' ? {} : { base_branch: base }), tasks: [{ id: 'FIG-001', title: 'Figure', slug: 'figure', issue: 4, depends_on: [], adrs: [] }] }, null, 2));
   write('docs/plans/planned/FIG-001-figure.md', '# FIG-001: Figure\n\n[scope](../../product/mvp1.md) and [research](../../product/mvp1-research.md#baseline)\n');
   write('docs/product/mvp1.md', '# MVP 1: Figures\n\nSee the [summary](mvp1-summary.html).\n');
   write('docs/product/mvp1-research.md', '# Research\n\n## Baseline\n');
@@ -41,12 +42,12 @@ function fixture(t) {
   fs.mkdirSync(path.join(dir, 'bin'));
   fs.writeFileSync(path.join(dir, 'bin/gh'), fakeGh, { mode: 0o755 });
   fs.writeFileSync(path.join(dir, 'bin/github.json'), JSON.stringify({ milestones: [{ number: 1, title: 'MVP 1' }, { number: 2, title: 'Backlog' }], writes: [] }));
-  git('init', '--quiet', '--initial-branch', 'main');
+  git('init', '--quiet', '--initial-branch', base);
   git('config', 'user.email', 'test@example.com'); git('config', 'user.name', 'Test');
   spawnSync('git', ['init', '--quiet', '--bare', path.join(dir, 'origin.git')]);
   git('remote', 'add', 'origin', path.join(dir, 'origin.git'));
   git('add', '--all'); git('commit', '--quiet', '--message', 'plan');
-  git('branch', 'mvp1'); git('push', '--quiet', 'origin', 'main', 'mvp1');
+  git('branch', 'mvp1'); git('push', '--quiet', 'origin', base, 'mvp1');
   const run = offline => spawnSync(process.execPath, [path.join(here, 'migrate.mjs')], { cwd: project, encoding: 'utf8', env: { ...process.env, AGENT_GH: path.join(dir, 'bin/gh'), GH_STATE: path.join(dir, 'bin/github.json'), ...(offline ? { GH_FAIL: '1' } : {}) } });
   const github = () => JSON.parse(fs.readFileSync(path.join(dir, 'bin/github.json'), 'utf8'));
   const read = file => fs.readFileSync(path.join(project, file), 'utf8');
@@ -67,6 +68,17 @@ test('the manifest, the branch, the documents, their links and GitHub are rename
   assert.deepEqual(f.github().writes, ['PATCH milestones/1 {"title":"Milestone 1"}', 'POST branches/mvp1/rename {"new_name":"milestone1"}']);
   assert.match(f.run().stdout, /Nothing to migrate/, 'a second run changes nothing');
 });
+test('a project whose base branch is not main migrates the same way, and its base_branch stays', t => {
+  const f = fixture(t, 'trunk');
+  const result = f.run();
+  assert.equal(result.status, 0, result.stderr);
+  const manifest = JSON.parse(f.read('docs/plans/backlog.json'));
+  assert.deepEqual(Object.keys(manifest), ['version', 'milestone', 'repository', 'integration_branch', 'base_branch', 'tasks']);
+  assert.deepEqual([manifest.integration_branch, manifest.base_branch], ['milestone1', 'trunk']);
+  assert.equal(f.git('branch', '--list', 'mvp1', 'milestone1').trim(), 'milestone1');
+  assert.equal(f.git('branch', '--show-current'), 'trunk');
+  assert.deepEqual(f.github().writes, ['PATCH milestones/1 {"title":"Milestone 1"}', 'POST branches/mvp1/rename {"new_name":"milestone1"}']);
+});
 test('a GitHub failure leaves the project untouched', t => {
   const f = fixture(t);
   const result = f.run(true);
@@ -84,6 +96,6 @@ test('it refuses a dirty tree, a task in progress and an unmerged integration br
   assert.match(f.run().stderr, /Finish the tasks in progress first: FIG-001/);
   f.git('branch', '--delete', '--force', 'task/fig-001');
   f.git('switch', '--quiet', 'mvp1'); f.write('src/app.js', 'export {};\n'); f.git('add', '--all'); f.git('commit', '--quiet', '--message', 'task'); f.git('switch', '--quiet', 'main');
-  assert.match(f.run().stderr, /mvp1 holds work this checkout lacks: merge its pull request first/);
+  assert.match(f.run().stderr, /mvp1 holds work this checkout lacks: merge its pull request first, then migrate on the base branch$/m);
   assert.equal(f.github().writes.length, 0, 'nothing was changed on GitHub');
 });

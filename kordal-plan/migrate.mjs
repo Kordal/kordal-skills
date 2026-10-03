@@ -16,8 +16,10 @@ import { execFileSync } from 'node:child_process';
 //
 // GitHub is changed first: a failure there leaves the project untouched and
 // the run can be repeated. Nothing is committed. It refuses a dirty tree, a
-// task in progress and an integration branch that main does not contain: the
-// rename belongs between two milestones. AGENT_GH is the gh to run.
+// task in progress and an integration branch that the checkout does not
+// contain: the rename belongs between two milestones, on the base branch
+// (main, or the manifest's "base_branch", which the migration keeps as it is).
+// AGENT_GH is the gh to run.
 const root = process.cwd();
 const manifestPath = 'docs/plans/backlog.json';
 const assert = (condition, message) => { if (!condition) throw new Error(message); };
@@ -43,7 +45,7 @@ try {
   const done = task => tryGit('cat-file', '-e', `${branch}:docs/plans/completed/${task.id}-${task.slug}.md`) !== null;
   const inProgress = manifest.tasks.filter(task => exists(`refs/heads/task/${task.id.toLowerCase()}`) && !done(task)).map(task => task.id);
   assert(!inProgress.length, `Finish the tasks in progress first: ${inProgress.join(', ')}`);
-  assert(!exists(`refs/heads/${branch}`) || tryGit('merge-base', '--is-ancestor', branch, 'HEAD') !== null, `${branch} holds work this checkout lacks: merge its pull request first, then migrate on main`);
+  assert(!exists(`refs/heads/${branch}`) || tryGit('merge-base', '--is-ancestor', branch, 'HEAD') !== null, `${branch} holds work this checkout lacks: merge its pull request first, then migrate on the base branch`);
 
   if (manifest.repository) {
     const repo = `repos/${manifest.repository}`;
