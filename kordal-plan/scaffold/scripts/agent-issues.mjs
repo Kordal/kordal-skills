@@ -17,8 +17,8 @@ import { stateOf } from './agent-local.mjs';
 // nothing and fails on any difference. AGENT_GH is the gh to run (default: gh).
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const manifestPath = 'docs/plans/backlog.json';
-const statusLabels = { WAIT: 'status:waiting', BLOCKED: 'status:blocked', READY: 'status:ready', CLAIMED: 'status:in-progress', DONE: 'status:done' };
-const labelColors = { 'status:waiting': 'cfd3d7', 'status:blocked': 'd73a4a', 'status:ready': '0e8a16', 'status:in-progress': 'fbca04', 'status:done': '6f42c1' };
+const statusLabels = { WAIT: 'waiting', BLOCKED: 'blocked', READY: 'ready', CLAIMED: 'in-progress', DONE: 'done' };
+const labelColors = { waiting: 'cfd3d7', blocked: 'd73a4a', ready: '0e8a16', 'in-progress': 'fbca04', done: '6f42c1' };
 const generated = '<!-- Generated from the plan by scripts/agent-issues.mjs: edit the plan, not this issue. -->';
 const assert = (condition, message) => { if (!condition) throw new Error(message); };
 const git = (...args) => execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
@@ -108,7 +108,7 @@ function sync(manifest, check) {
       title: `${task.id}: ${task.title}`,
       body: issueBody(manifest, task, state, planText(manifest, task, state)),
       state: state === 'DONE' ? 'closed' : 'open',
-      labels: [...issue.labels.map(l => l.name).filter(n => !n.startsWith('status:')), statusLabels[state]].sort(),
+      labels: [...issue.labels.map(l => l.name).filter(n => !(n in labelColors) && !n.startsWith('status:')), statusLabels[state]].sort(),
       // A finished task keeps the GitHub milestone it was delivered in.
       milestone: state === 'DONE' && issue.milestone ? issue.milestone.number : milestone,
     };

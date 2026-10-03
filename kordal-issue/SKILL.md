@@ -101,7 +101,7 @@ Done when every answer is yes.
 
 ## 6. Create
 
-Two labels: `needs-review`, created where the repository lacks it (`gh label create needs-review --description "Written by an agent, awaiting /kordal-issue-review"`), and the kind label the repository already has (`gh label list`), such as `bug` or `enhancement`; without a fitting one, `needs-review` alone. The `status:` labels belong to the tasks of the backlog and are never set here.
+Two labels: `needs-review`, created where the repository lacks it (`gh label create needs-review --description "Written by an agent, awaiting /kordal-issue-review"`), and the kind label the repository already has (`gh label list`), such as `bug` or `enhancement`; without a fitting one, `needs-review` alone. The status labels (`waiting`, `blocked`, `ready`, `in-progress`, `done`) belong to the tasks of the backlog and are never set here.
 
 Write the body to a file outside the repository and run `gh issue create --title "<title>" --body-file <file> --label needs-review --label <kind>`. The repository is this checkout's `origin`.
 

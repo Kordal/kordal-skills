@@ -61,12 +61,12 @@ test('sync creates the labels, the milestone and one issue per task, and records
   const f = fixture(t);
   const first = f.issues(['sync']);
   assert.equal(first.status, 0, first.stderr);
-  assert.deepEqual(f.github().labels.map(l => l.name).sort(), ['status:blocked', 'status:done', 'status:in-progress', 'status:ready', 'status:waiting']);
+  assert.deepEqual(f.github().labels.map(l => l.name).sort(), ['blocked', 'done', 'in-progress', 'ready', 'waiting']);
   assert.deepEqual(f.github().milestones, [{ number: 1, title: 'Milestone 1' }]);
   assert.deepEqual(f.manifest().tasks.map(task => task.issue), [1, 2]);
   assert.match(fs.readFileSync(path.join(f.dir, 'docs/plans/planned/CAP-002-freshness.md'), 'utf8'), /^Issue: #2$/m);
-  assert.deepEqual({ ...f.issue(1), body: undefined }, { state: 'open', labels: ['status:ready'], milestone: 1, title: 'CAP-001: Identity', body: undefined });
-  assert.deepEqual(f.issue(2).labels, ['status:waiting']);
+  assert.deepEqual({ ...f.issue(1), body: undefined }, { state: 'open', labels: ['ready'], milestone: 1, title: 'CAP-001: Identity', body: undefined });
+  assert.deepEqual(f.issue(2).labels, ['waiting']);
   assert.match(f.issue(2).body, /^Deliver Freshness\.\n\n\*\*Plan:\*\* `CAP-002-freshness\.md` under `docs\/plans\/`\n\n\*\*Depends on:\*\* #1 \(CAP-001\)\n\n### Acceptance criteria\n\n- \[ \] Works\n- \[ \] Fails safely\n/);
   assert.equal(spawnSync(process.execPath, [path.join(f.dir, 'scripts/agent-workflow.mjs'), 'check'], { encoding: 'utf8' }).status, 0, 'the plans agree with the manifest');
 });
@@ -90,16 +90,16 @@ test('claim and finish keep the status labels, the closed state and the pushed b
   const f = fixture(t);
   f.plan6();
   assert.equal(f.local(['claim', 'CAP-001']).status, 0);
-  assert.deepEqual(f.issue(1).labels, ['status:in-progress']);
+  assert.deepEqual(f.issue(1).labels, ['in-progress']);
   assert.equal(f.git('rev-parse', 'refs/remotes/origin/milestone1'), f.git('rev-parse', 'milestone1'), 'the claim publishes the integration branch');
   f.git('branch', '--delete', '--force', 'task/cap-001');
   const finished = f.deliver();
   assert.equal(finished.status, 0, finished.stderr);
   assert.match(finished.stdout, /CAP-001 is on milestone1 at [a-f0-9]{40}\. Pushed milestone1; issues synced\./);
   assert.equal(f.git('ls-remote', 'origin', 'refs/heads/milestone1').split(/\s/)[0], f.git('rev-parse', 'milestone1'));
-  assert.deepEqual({ state: f.issue(1).state, labels: f.issue(1).labels }, { state: 'closed', labels: ['status:done'] });
+  assert.deepEqual({ state: f.issue(1).state, labels: f.issue(1).labels }, { state: 'closed', labels: ['done'] });
   assert.match(f.issue(1).body, /- \[x\] Works\n- \[x\] Fails safely/);
-  assert.deepEqual({ state: f.issue(2).state, labels: f.issue(2).labels }, { state: 'open', labels: ['status:ready'] }, 'the dependant became ready');
+  assert.deepEqual({ state: f.issue(2).state, labels: f.issue(2).labels }, { state: 'open', labels: ['ready'] }, 'the dependant became ready');
   assert.equal(f.issues(['sync', '--check']).status, 0);
   // The next milestone gets its own GitHub milestone; the finished task keeps the one that delivered it.
   const manifest = f.manifest(); manifest.milestone = 2;
@@ -110,15 +110,15 @@ test('claim and finish keep the status labels, the closed state and the pushed b
 test('the check names every difference and changes nothing; sync repairs it and keeps other labels', t => {
   const f = fixture(t);
   f.plan6();
-  f.edit(state => { state.issues[0].state = 'closed'; state.issues[0].labels = [{ name: 'status:done' }, { name: 'bug' }]; state.issues[1].body = 'Edited on GitHub.'; });
+  f.edit(state => { state.issues[0].state = 'closed'; state.issues[0].labels = [{ name: 'done' }, { name: 'bug' }]; state.issues[1].body = 'Edited on GitHub.'; });
   const writes = f.github().writes.length;
   const check = f.issues(['sync', '--check']);
   assert.equal(check.status, 1);
-  assert.match(check.stdout, /DRIFT CAP-001 #1: state, labels differ \(wanted status:ready\)\nDRIFT CAP-002 #2: body differ/);
+  assert.match(check.stdout, /DRIFT CAP-001 #1: state, labels differ \(wanted ready\)\nDRIFT CAP-002 #2: body differ/);
   assert.match(check.stderr, /2 difference\(s\) between GitHub and the repository/);
   assert.equal(f.github().writes.length, writes);
   assert.equal(f.issues(['sync']).status, 0);
-  assert.deepEqual({ state: f.issue(1).state, labels: f.issue(1).labels }, { state: 'open', labels: ['bug', 'status:ready'] });
+  assert.deepEqual({ state: f.issue(1).state, labels: f.issue(1).labels }, { state: 'open', labels: ['bug', 'ready'] });
   assert.match(f.issue(2).body, /^Deliver Freshness\./);
 });
 test('an unreachable GitHub does not stop the work; next says so until publish succeeds', t => {
@@ -128,7 +128,7 @@ test('an unreachable GitHub does not stop the work; next says so until publish s
   assert.equal(finished.status, 0, finished.stderr);
   assert.match(finished.stderr, /WARN: GitHub was not updated \(issue sync failed\)\. Run: node scripts\/agent-local\.mjs publish/);
   assert.match(finished.stdout, /CAP-001 is on milestone1 at [a-f0-9]{40}\. GitHub was not updated\./);
-  assert.deepEqual(f.issue(1).labels, ['status:ready'], 'GitHub still shows the old state');
+  assert.deepEqual(f.issue(1).labels, ['ready'], 'GitHub still shows the old state');
   assert.match(f.local(['next']).stdout, /^READY CAP-002: Freshness\nGitHub is out of sync\. Run: node scripts\/agent-local\.mjs publish\n$/);
   assert.equal(f.local(['publish'], true).status, 1);
   assert.match(f.local(['publish']).stdout, /Pushed milestone1; issues synced\./);

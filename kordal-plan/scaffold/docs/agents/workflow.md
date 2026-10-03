@@ -26,7 +26,7 @@ A manifest that names a `repository` has a mirror of this state on GitHub; a man
 
 - **Integration branch:** `claim` and `finish` push it, so GitHub holds every finished task. A push of this branch starts no hosted check.
 - **Main:** planning pushes it with documents only. A hosted workflow that runs on a push to main ignores `docs/**` and `scripts/agent-*` in its `paths-ignore`, so that it builds and publishes when product code arrives, at the milestone's merge, and not for a plan.
-- **Issues:** one per task, in the GitHub milestone `Milestone <N>`, its body generated from the plan. Each carries one status label, the state `next` shows: `status:waiting`, `status:blocked`, `status:ready`, `status:in-progress`, `status:done`. An issue closes when its task is on the integration branch.
+- **Issues:** one per task, in the GitHub milestone `Milestone <N>`, its body generated from the plan. Each carries one status label, the state `next` shows: `waiting`, `blocked`, `ready`, `in-progress`, `done`. An issue closes when its task is on the integration branch.
 
 [`scripts/agent-issues.mjs`](../../scripts/agent-issues.mjs) keeps the mirror: `claim` and `finish` run its `sync`, which changes only what differs on GitHub. For a task that has no issue yet it creates one and writes the number into the manifest and the plan of the checkout; commit those with the task. `node scripts/agent-issues.mjs sync --check` changes nothing and fails on any difference. When GitHub cannot be reached the local result stands, `next` reports that GitHub is out of sync, and `node scripts/agent-local.mjs publish` repairs it. Task identifiers are not issue numbers.
 

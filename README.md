@@ -113,7 +113,7 @@ A milestone ends with its acceptance task: the full check (every slow suite and 
 Optional, asked once when a project is scaffolded. With it:
 
 - one issue per task in the GitHub milestone `Milestone <N>`, generated from the plan;
-- one status label per issue: `status:waiting`, `status:blocked`, `status:ready`, `status:in-progress`, `status:done`;
+- one status label per issue: `waiting`, `blocked`, `ready`, `in-progress`, `done`;
 - `claim` and `finish` push the integration branch and sync the issues; an issue closes when its task is integrated;
 - `node scripts/agent-issues.mjs sync --check` fails on any difference; `node scripts/agent-local.mjs publish` repairs it after working offline.
 

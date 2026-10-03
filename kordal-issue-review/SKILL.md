@@ -113,7 +113,7 @@ Write the comment to a file outside the repository and post it: `gh issue commen
 
 An issue carries one state label at a time: `needs-review`, `needs-rework`, `needs-info`, `duplicate`, `already-implemented`, `ready-for-dev`, `in-development` or `needs-pr-review`. Set the one of the result's row and remove every other the issue carries: `gh issue edit <number> --add-label <label> --remove-label <label>`. Create a missing label with `gh label create <label> --description "<what it means>"`.
 
-`ready-for-dev` is set by this review alone. The `status:` labels belong to the tasks of the backlog and are never set here.
+`ready-for-dev` is set by this review alone. The status labels (`waiting`, `blocked`, `ready`, `in-progress`, `done`) belong to the tasks of the backlog and are never set here.
 
 ## 7. Hand over
 
