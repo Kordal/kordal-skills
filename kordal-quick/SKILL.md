@@ -7,7 +7,7 @@ argument-hint: "<request>"
 
 Make the change in `$ARGUMENTS` and stop at its open pull request, which the owner merges. With no request, ask for one.
 
-QUICK is the lowest level of one ladder, QUICK → FEATURE → MILESTONE: each level takes what the level below must refuse. Its whole footprint is one branch, the commits of one change and one pull request:
+QUICK is the lowest level of one ladder, QUICK → FEATURE → MILESTONE: each level takes what the level below must refuse. Its whole footprint is one branch in a worktree of its own, the commits of one change and one pull request:
 
 - It creates no milestone, backlog task, GitHub issue, task plan, Mermaid flow, summary page, integration branch or approval gate, and it merges nothing.
 - It needs no scaffold: any Git repository with a GitHub `origin` will do.
@@ -48,12 +48,12 @@ Read only what the change sits in: the code it touches, the existing implementat
 
 ## 3. Branch
 
-The working tree has to be clean (`git status --porcelain` prints nothing); one that is not ends the run with the owner told what is in it. `git fetch`, then find the base branch:
+The change is made in a worktree of its own, so the owner's checkout stays as it is: its branch, and whatever is uncommitted in it. `git fetch`, then find the base branch:
 
 - **a scaffolded project** (it has `docs/plans/backlog.json`): `node scripts/agent-local.mjs base`. Where an older helper answers with its usage text, it is `base_branch` of the manifest, `main` without one;
 - **any other repository**: its default branch, `gh repo view --json defaultBranchRef --jq .defaultBranchRef.name`, or `git symbolic-ref --short refs/remotes/origin/HEAD | sed 's|^origin/||'`.
 
-Branch from its fetched tip: `git switch -c quick/<short-description> --no-track origin/<base>`, as in `quick/fix-empty-state-label`. Done when the checkout is on that branch and you have noted the branch it was on before.
+Branch from its fetched tip into the worktree: `git worktree add --no-track -b quick/<short-description> ../<project>.worktrees/quick-<short-description> origin/<base>`, as in `quick/fix-empty-state-label`. Every later step runs there, the commands of steps 5 and 7 included: install the dependencies they need in it first. Done when the worktree is on that branch.
 
 ## 4. Change
 
@@ -105,7 +105,7 @@ Done when the pull request is open against the base branch.
 
 ## 9. Stop
 
-Give the owner the pull request's URL, the validation results, and the branch the checkout was on before, which they can switch back to. The run ends here: review and merge are the owner's.
+Give the owner the pull request's URL, the validation results, and the worktree's path with the command that removes it once the pull request is merged: `git worktree remove <path>`. The run ends here: review and merge are the owner's.
 
 ## Escalate
 
@@ -115,4 +115,4 @@ At any step, as soon as a condition of step 1 fails or turns uncertain. Stop, te
 - `/kordal-plan-feature <request>`: it fits one to three tasks and needs no new architecture decision;
 - `/kordal-plan`: it is larger, or needs an architecture decision.
 
-Commit work already done on its `quick/` branch, unpushed and without a pull request, and name the branch: the next level decides what to take from it.
+Commit work already done on its `quick/` branch, unpushed and without a pull request, and name the branch and its worktree: the next level decides what to take from it.
