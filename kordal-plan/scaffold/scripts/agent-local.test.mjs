@@ -917,6 +917,8 @@ scenario('a submodule the project tells Git to ignore is a runtime change like a
   const inside = (...args) => { const r = spawnSync('git', args, { cwd: path.join(f.dir, 'vendor/lib'), encoding: 'utf8' }); assert.equal(r.status, 0, r.stderr); };
   inside('config', 'user.email', 'test@example.com'); inside('config', 'user.name', 'Test');
   fs.writeFileSync(path.join(f.dir, 'vendor/lib/lib.js'), 'v2\n'); inside('add', '--all'); inside('commit', '--quiet', '--message', 'v2');
+  // Staged by its commit: whether `git add` stages a pointer the project tells Git to ignore differs between Git versions.
+  f.git('update-index', '--cacheinfo', `160000,${spawnSync('git', ['rev-parse', 'HEAD'], { cwd: path.join(f.dir, 'vendor/lib'), encoding: 'utf8' }).stdout.trim()},vendor/lib`);
   f.move('docs/plans/planned/CAP-001-identity.md', 'docs/plans/completed/CAP-001-identity.md');
   const head = f.commit('CAP-001: vendor/lib v2');
   assert.match(refused(f, ['finish', 'CAP-001']), new RegExp(`No passed task-check covers ${head}`), 'the moved pointer needs a gate');
