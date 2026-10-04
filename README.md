@@ -280,9 +280,9 @@ bash kordal-plan/bootstrap.sh --stamp <dir>   # record the current version
 | `merged` | Both changed it, in different places: both changes |
 | `added`, `removed` | The scaffold added or dropped it, and the project held nothing of its own there |
 | `kept` | The project deleted it: it stays deleted |
-| `CONFLICT` | Both changed the same lines, and the file now holds both between conflict markers; or one side added or dropped a file the other holds in its own form, and the project's file is untouched |
+| `CONFLICT` | Both changed the same lines, and the file now holds both between conflict markers; or one side added or dropped a file the other holds in its own form, or the project reaches the file through a symbolic link, or Git does not track it there: the project's file is untouched |
 
-It needs a recorded version that is a commit of this repository, and a clean project tree, so that the update is a diff to review and to revert. Without a conflict it records the new version. With one it records nothing and exits 1: resolve, then `--stamp`.
+It needs a recorded version that is a commit of this repository and that this checkout contains (an older checkout would undo what the project has), and a clean project tree, so that the update is a diff to review and to revert. Without a conflict it records the new version. With one it records nothing and exits 1: resolve, then `--stamp`, not `--update` again.
 
 Before committing, run what CI runs:
 
