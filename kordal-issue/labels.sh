@@ -30,7 +30,8 @@ fi
 created=0
 while IFS='|' read -r name description; do
 	# GitHub treats label names as case-insensitive: "Duplicate" is the label.
-	if printf '%s\n' "$existing" | grep -Fxqi -e "$name"; then continue; fi
+	# No pipe: grep -q leaves at its first match, and under pipefail the writer it cut off would turn a found label into a missing one.
+	if grep -Fxqi -e "$name" <<<"$existing"; then continue; fi
 	if ! "$gh" label create "$name" --description "$description" </dev/null >/dev/null; then
 		echo "FAIL     gh label create $name failed" >&2
 		exit 1
