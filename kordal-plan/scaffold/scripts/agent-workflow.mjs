@@ -25,8 +25,9 @@ export function section(text, heading) {
   let fenced = false;
   const lines = (text ?? '').split(/\r?\n/).map(line => {
     if (/^\s*(```|~~~)/.test(line)) { fenced = !fenced; return { line }; }
-    const match = fenced ? null : /^(#{1,6}) +(.*?)\s*$/.exec(line);
-    return { line, level: match?.[1].length, title: match?.[2] };
+    // The title is trimmed apart: a lazy match before \s*$ takes quadratic time on a long line.
+    const match = fenced ? null : /^(#{1,6}) +(.*)$/.exec(line);
+    return { line, level: match?.[1].length, title: match?.[2].trimEnd() };
   });
   const start = lines.findIndex(l => l.title === heading);
   if (start < 0) return '';

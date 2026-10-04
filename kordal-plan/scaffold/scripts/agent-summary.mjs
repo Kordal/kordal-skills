@@ -33,51 +33,91 @@ function safeHref(target) {
   const url = target.replace(/[\u0000-\u001f \u007f-\u009f]/g, '');
   return url && /^(?:https?:|mailto:|[^:&/?#]*(?:[/?#]|$))/i.test(url) ? url : null;
 }
-const link = (target, html) => { const href = safeHref(unesc(target)); return href === null ? null : `<a href="${esc(href)}">${html}</a>`; };
+// The page lies in docs/product/, and a relative target is written from its own
+// document: a plan in docs/plans/<phase>/, an ADR in docs/adr/. It is resolved
+// against that document and written from the page's directory; a target
+// without a path ("#goal") is the document itself. The result is checked
+// again: ".." can bring a later segment to the front, where it would be read
+// as a scheme ("../../product/javascript:x" in a plan).
+const pageDir = 'docs/product';
+function link(target, html, file) {
+  let href = safeHref(unesc(target));
+  if (href !== null && file && !/^(?:https?:|mailto:|\/)/i.test(href)) {
+    const cut = href.search(/[?#]|$/), from = pageDir.split('/');
+    const to = path.posix.join(path.posix.dirname(file), href.slice(0, cut) || path.posix.basename(file)).split('/').filter(part => part !== '.');
+    let same = 0;
+    while (same < from.length && to[same] === from[same]) same++;
+    href = safeHref(([...from.slice(same).map(() => '..'), ...to.slice(same)].join('/') || './') + href.slice(cut));
+  }
+  return href === null ? null : `<a href="${esc(href)}">${html}</a>`;
+}
 
 // The Markdown of the plans, rendered here. The source is escaped once, before
 // anything else, so every "<", ">" and quote of the result is one this
 // renderer wrote: raw HTML in a plan is shown as text. It writes headings,
 // paragraphs, lists (task checkboxes as disabled boxes), blockquotes, fenced
 // code, tables, rules, code spans, bold, italic and links, and nothing else.
+// Its work grows with the length of the text, not with its square: no pattern
+// looks for its end again from every start on a long line. Lists, quotes and
+// emphasis nest by recursion: past maxDepth what is left is written flat, so
+// that a line of a thousand markers ends as text and not as a stack overflow.
+const maxDepth = 32;
 const punctuation = /[!-\/:-@\[-`{-~]/.source;
 const token = new RegExp([
   /(?<!`)(`+)(?!`)([^]*?[^`])\1(?!`)/,                           // 1, 2: a code span
   new RegExp(`\\\\(&(?:amp|lt|gt|quot|#39);|${punctuation})`),   // 3: a backslash escape
-  /(!?)\[((?:[^\[\]\\]|\\[^]|\[[^\[\]]*\])*)\]\( *((?:[^\s()\\]|\\[^]|\([^\s()]*\))*)(?: +(?:&quot;[^]*?&quot;|&#39;[^]*?&#39;))? *\)/, // 4, 5, 6: a link or an image
-  /&lt;(https?:\/\/\S*?)&gt;/,                                   // 7: an autolink
+  // 4, 5, 6: a link or an image. Its title ends at the first quote of its kind that is not escaped.
+  /(!?)\[((?:[^\[\]\\]|\\[^]|\[[^\[\]]*\])*)\]\( *((?:[^\s()\\]|\\[^]|\([^\s()]*\))*)(?: +(?:&quot;(?:[^&\\]|\\[^]|&(?!quot;))*&quot;|&#39;(?:[^&\\]|\\[^]|&(?!#39;))*&#39;))? *\)/,
+  /&lt;(https?:\/\/(?:[^\s&]|&(?![lg]t;))*)&gt;/,                // 7: an autolink, which holds no angle bracket
   /(?<![A-Za-z0-9])(https?:\/\/(?:[^\s&]|&amp;)+)/,              // 8: a bare URL
 ].map(part => part.source).join('|'), 'g');
 const backslash = new RegExp(`\\\\(?=${punctuation})`, 'g');
-// Punctuation that ends the sentence, and a bracket opened before the URL, are not part of it.
+// Punctuation that ends the sentence, and a bracket opened before the URL, are
+// not part of it. The text is escaped by now: the ";" that closes the "&amp;"
+// of a URL ending in "&" is part of it.
 const trimUrl = url => {
   let end = url.length;
-  for (let extra = url.split(')').length - url.split('(').length; /[.,;:!?*_~]/.test(url[end - 1] ?? '') || (url[end - 1] === ')' && extra-- > 0);) end--;
+  for (let extra = url.split(')').length - url.split('(').length; (/[.,;:!?*_~]/.test(url[end - 1] ?? '') && !url.endsWith('&amp;', end)) || (url[end - 1] === ')' && extra-- > 0);) end--;
   return url.slice(0, end);
 };
+// Bold runs from its opener to the first closer after it. An opener without a
+// closer ends the search, since no later opener has one either: a line of
+// openers is read once, not once for each of them.
+const stars = [/(?<!\*)\*\*(?=\**[^\s*])/g, /\S\*\*(?!\*)/g], underscores = [/(?<![A-Za-z0-9_])__(?=\S)/g, /\S__(?![A-Za-z0-9_])/g];
+function bold(run, [open, close], write) {
+  let out = '', from = 0;
+  for (;;) {
+    open.lastIndex = from;
+    const opened = open.exec(run), start = open.lastIndex;
+    close.lastIndex = start;
+    const closed = opened && close.exec(run), end = close.lastIndex;
+    if (!closed) return out + run.slice(from);
+    out += run.slice(from, opened.index) + write(run.slice(opened.index, end), run.slice(start, closed.index + 1));
+    from = end;
+  }
+}
 // Whatever is written is kept aside behind a placeholder, so that a later rule
 // sees text only and can neither rewrite a tag nor cross one. The source holds
 // no NUL: markdown() removes control characters.
-function inline(text, links = true) {
+function inline(text, file, links = true) {
   const kept = [];
   const keep = html => `\u0000${kept.push(html) - 1}\u0000`;
   const restore = html => html.replace(/\u0000(\d+)\u0000/g, (_, n) => restore(kept[n]));
-  const wrap = tag => (_, inner) => keep(`<${tag}>${emphasis(inner)}</${tag}>`);
+  // Emphasis holds emphasis ("____a____" is bold in bold), down to maxDepth.
+  const wrap = (tag, depth) => (_, inner) => keep(`<${tag}>${depth < maxDepth ? emphasis(inner, depth + 1) : inner}</${tag}>`);
   // "_" marks emphasis only at the edge of a word: snake_case stays as written.
-  const emphasis = run => run
-    .replace(/(?<!\*)\*\*(?=\**[^\s*])([^]*?\S)\*\*(?!\*)/g, wrap('strong'))
-    .replace(/(?<![A-Za-z0-9_])__(?=\S)([^]*?\S)__(?![A-Za-z0-9_])/g, wrap('strong'))
-    .replace(/(?<!\*)\*(?=[^\s*])([^*]*?[^\s*])\*(?!\*)/g, wrap('em'))
-    .replace(/(?<![A-Za-z0-9_])_(?=[^\s_])([^_]*?[^\s_])_(?![A-Za-z0-9_])/g, wrap('em'));
+  const emphasis = (run, depth = 0) => bold(bold(run, stars, wrap('strong', depth)), underscores, wrap('strong', depth))
+    .replace(/(?<!\*)\*(?=[^\s*])([^*]*?[^\s*])\*(?!\*)/g, wrap('em', depth))
+    .replace(/(?<![A-Za-z0-9_])_(?=[^\s_])([^_]*?[^\s_])_(?![A-Za-z0-9_])/g, wrap('em', depth));
   return restore(emphasis(text.replace(token, (match, ticks, code, escaped, image, label, target, auto, bare) => {
     if (ticks) return keep(`<code>${code.replace(/^ ([^]+) $/, '$1')}</code>`);
     if (escaped) return keep(escaped);
     if (label !== undefined) {
       // An image becomes a link named by its alternative text: the page loads
       // nothing. A target that is refused leaves the source as written.
-      const name = inline(label, false);
+      const name = inline(label, file, false);
       if (!links) return keep(name);
-      return keep(link(target.replace(/^&lt;(.*)&gt;$/, '$1').replace(backslash, ''), name) ?? match);
+      return keep(link(target.replace(/^&lt;(.*)&gt;$/, '$1').replace(backslash, ''), name, file) ?? match);
     }
     if (!links) return keep(match);
     if (auto) return keep(link(auto, auto) ?? match);
@@ -86,12 +126,18 @@ function inline(text, links = true) {
   })));
 }
 
+// The end of a line is cut by hand: a pattern that ends in " *$" or "#+$"
+// starts again at every space or "#" of a long line.
+const cut = (text, char) => { let end = text.length; while (end && text[end - 1] === char) end--; return text.slice(0, end); };
 const fence = /^( {0,3})(`{3,}(?=[^`]*$)|~{3,}) *(\S*)/;
-const heading = /^ {0,3}(#{1,6})(?: +|$)(.*?)(?: +#+)? *$/;
+const heading = /^ {0,3}(#{1,6})(?: +|$)(.*)$/;
+// The text of a heading ends before its closing "#"s, which a space sets apart.
+const headingText = rest => { const text = cut(rest, ' '), open = cut(text, '#'); return open.endsWith(' ') ? cut(open, ' ') : text; };
 const rule = /^ {0,3}([-*_])(?: *\1){2,} *$/;
 const quote = /^ {0,3}&gt; ?/;
 const bullet = /^( {0,3})([-*+]|\d{1,9}[.)])( +|$)/;
-const tableRule = /^ {0,3}\|? *:?-+:? *(?:\| *:?-+:? *)*\|? *$/;
+// Of a line without the spaces it ends in (cut).
+const tableRule = /^ {0,3}\|? *:?-+:? *(?:\| *:?-+:? *)*\|?$/;
 const cells = row => row.trim().replace(/^\|/, '').replace(/(?<!\\)\|$/, '').split(/(?<!\\)\|/).map(cell => cell.trim().replace(/\\\|/g, '|'));
 const indent = line => line.search(/\S|$/);
 // A Mermaid block (the Flow of a plan) is shown as its source: drawing it
@@ -101,10 +147,16 @@ const codeBlock = (info, body) => /^mermaid$/i.test(info)
   : `<pre><code>${body}</code></pre>`;
 
 // The blocks of escaped lines; `tight` writes a leading paragraph without its
-// <p>, as the text of a list item beside its bullet or checkbox.
-function blocks(lines, tight = false) {
+// <p>, as the text of a list item beside its bullet or checkbox. A list item
+// and a quote are blocks of their own, one call deeper: past maxDepth they
+// are one paragraph.
+function blocks(lines, file, depth = 0, tight = false) {
+  if (depth > maxDepth) {
+    const flat = inline(lines.map(line => line.trim()).filter(Boolean).join('\n'), file);
+    return tight || !flat ? flat : `<p>${flat}</p>`;
+  }
   const out = [];
-  const tableAt = at => lines[at].includes('|') && tableRule.test(lines[at + 1] ?? '') && cells(lines[at]).length === cells(lines[at + 1]).length;
+  const tableAt = at => lines[at].includes('|') && tableRule.test(cut(lines[at + 1] ?? '', ' ')) && cells(lines[at]).length === cells(lines[at + 1]).length;
   // What ends a paragraph: a blank line or the start of another block.
   const starts = at => !lines[at].trim() || [fence, heading, rule, quote].some(block => block.test(lines[at])) || /^ {0,3}(?:[-*+]|1[.)]) +\S/.test(lines[at]) || tableAt(at);
   for (let i = 0; i < lines.length;) {
@@ -118,7 +170,7 @@ function blocks(lines, tight = false) {
       i++;
       out.push(codeBlock(m[3], body.join('\n')));
     } else if ((m = heading.exec(line))) {
-      out.push(`<h${m[1].length}>${inline(m[2])}</h${m[1].length}>`);
+      out.push(`<h${m[1].length}>${inline(headingText(m[2]), file)}</h${m[1].length}>`);
       i++;
     } else if (rule.test(line)) {
       out.push('<hr>');
@@ -126,11 +178,11 @@ function blocks(lines, tight = false) {
     } else if (quote.test(line)) {
       const quoted = [];
       for (; i < lines.length && quote.test(lines[i]); i++) quoted.push(lines[i].replace(quote, ''));
-      out.push(`<blockquote>${blocks(quoted)}</blockquote>`);
+      out.push(`<blockquote>${blocks(quoted, file, depth + 1)}</blockquote>`);
     } else if (tableAt(i)) {
       const head = cells(line), rows = [];
       for (i += 2; i < lines.length && lines[i].includes('|'); i++) rows.push(cells(lines[i]));
-      const row = (tag, values) => `<tr>${head.map((_, n) => `<${tag}>${inline(values[n] ?? '')}</${tag}>`).join('')}</tr>`;
+      const row = (tag, values) => `<tr>${head.map((_, n) => `<${tag}>${inline(values[n] ?? '', file)}</${tag}>`).join('')}</tr>`;
       out.push(`<table><thead>${row('th', head)}</thead><tbody>${rows.map(values => row('td', values)).join('')}</tbody></table>`);
     } else if ((m = bullet.exec(line))) {
       const ordered = /\d/.test(m[2]), first = parseInt(m[2], 10), items = [];
@@ -138,11 +190,13 @@ function blocks(lines, tight = false) {
       for (let s; (s = sibling(i));) {
         // An item holds what is indented to its text; its content is parsed as blocks of its own.
         const width = s[1].length + s[2].length + (s[3].length > 4 ? 1 : s[3].length || 1), item = [lines[i].slice(width)];
+        let next = i;
         for (i++; i < lines.length; i++) {
           if (!lines[i].trim()) {
-            // A blank line stays in the item only when indented content follows it.
-            const next = lines.slice(i).find(l => l.trim());
-            if (next === undefined || indent(next) < width) break;
+            // A blank line stays in the item only when indented content follows
+            // it: the next line with text, looked up once for a run of blank lines.
+            for (next = Math.max(next, i); next < lines.length && !lines[next].trim();) next++;
+            if (next === lines.length || indent(lines[next]) < width) break;
             item.push('');
           } else if (indent(lines[i]) >= width) item.push(lines[i].slice(width));
           else if (starts(i) || bullet.test(lines[i])) break;
@@ -154,19 +208,22 @@ function blocks(lines, tight = false) {
       const tag = ordered ? 'ol' : 'ul';
       out.push(`<${tag}${ordered && first !== 1 ? ` start="${first}"` : ''}>${items.map(([text, ...rest]) => {
         const box = /^\[([ xX])\](?: +|$)/.exec(text);
-        return `<li>${box ? `<input type="checkbox" disabled${box[1] === ' ' ? '' : ' checked'}> ` : ''}${blocks([text.slice(box?.[0].length ?? 0), ...rest], true)}</li>`;
+        return `<li>${box ? `<input type="checkbox" disabled${box[1] === ' ' ? '' : ' checked'}> ` : ''}${blocks([text.slice(box?.[0].length ?? 0), ...rest], file, depth + 1, true)}</li>`;
       }).join('')}</${tag}>`);
     } else {
       const text = [line.trim()];
       for (i++; i < lines.length && !starts(i); i++) text.push(lines[i].trim());
-      out.push(tight && !out.length ? inline(text.join('\n')) : `<p>${inline(text.join('\n'))}</p>`);
+      out.push(tight && !out.length ? inline(text.join('\n'), file) : `<p>${inline(text.join('\n'), file)}</p>`);
     }
   }
   return out.join('\n');
 }
-export function markdown(text) {
+// `file` names the document the text is from, as its path from the repository
+// root: its relative links are then written as the page needs them (link).
+// Without it they stay as written.
+export function markdown(text, file) {
   const source = String(text ?? '').replace(/\r\n?/g, '\n').replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, '').replace(/^\t+/gm, tabs => '    '.repeat(tabs.length));
-  return blocks(esc(source).split('\n'));
+  return blocks(esc(source).split('\n'), file);
 }
 
 // The unfinished tasks in layers by dependency depth, straight from the
@@ -184,22 +241,63 @@ export function dependencyLayers(unfinished) {
   return layers;
 }
 
-const md = text => text.trim() ? `<div class="md">${markdown(text)}</div>` : '<p class="note">Not stated.</p>';
+const md = (text, file) => text.trim() ? `<div class="md">${markdown(text, file)}</div>` : '<p class="note">Not stated.</p>';
 // As in a plan section, the title line and HTML comments are not content.
-const prose = text => (text ?? '').replace(/^# .+\n/m, '').replace(/<!--[\s\S]*?-->/g, '');
+// Code is, as written: in a fenced block or a code span a "# " line is no
+// title and "<!--" opens no comment. Whichever opens first wins, a code span
+// stays in its paragraph, and a comment that is never closed is text: the way
+// tests/integration/check-docs.sh reads the same documents.
+const listItem = /(?:[-*+]|\d+[.)])[ \t]/.source, fenceMark = /(`{3,}(?![^\n]*`)|~{3,})/.source;
+const opener = new RegExp(`^(?:[ \\t>]|${listItem})*${fenceMark}|^# (.+)(?:\\n|$)|(?<!\\\\)<!--|(?<![\\\\\`])\`+`, 'gm');
+const paragraphEnd = new RegExp(`^[ \\t>]*(?:$|\\||#{1,6}[ \\t]|${listItem}|${fenceMark})`, 'gm');
+function prose(text) {
+  const source = String(text ?? '').replace(/\r\n?/g, '\n'), ticks = /`+/g;
+  const find = (pattern, from) => { pattern.lastIndex = from; return pattern.exec(source); };
+  const lineAfter = from => source.indexOf('\n', from) + 1 || source.length;
+  let title = null, body = '', at = 0, stop = -1, closable = true;
+  for (let open; (open = find(opener, at));) {
+    const [mark, fenced, heading] = open, from = open.index + mark.length;
+    // What the mark opens is kept up to `end`, or dropped; a mark that opens nothing is text.
+    let end = from, drop = false, close;
+    if (fenced) {
+      // Closed by a fence of the same character, at least as long; an unclosed block runs to the end.
+      close = find(new RegExp(`^[ \\t>]*${fenced[0]}{${fenced.length},}[ \\t]*$`, 'gm'), lineAfter(from));
+      end = close ? close.index + close[0].length : source.length;
+    } else if (heading !== undefined) {
+      // The first "# " line is the title; a later one is a heading of the text.
+      if (title === null) [title, drop] = [heading, true]; else end = open.index + 2;
+    } else if (mark === '<!--') {
+      // Once one comment has no end, no later one has: the rest is not searched again.
+      close = closable ? source.indexOf('-->', from) : -1;
+      if (close < 0) closable = false; else [end, drop] = [close + 3, true];
+    } else {
+      // A code span ends at the next run of as many backticks, in its own paragraph. Where that ends holds for
+      // every span of it: looked up again only once passed.
+      const next = lineAfter(from);
+      if (stop < next) stop = find(paragraphEnd, next)?.index ?? source.length;
+      for (ticks.lastIndex = from; (close = ticks.exec(source)) && close.index < stop && close[0].length !== mark.length;);
+      if (close && close.index < stop) end = close.index + mark.length;
+    }
+    body += source.slice(at, drop ? open.index : end);
+    at = end;
+  }
+  return { title, body: body + source.slice(at) };
+}
 const pill = (text, kind, href) => href ? `<a class="pill${kind && ` ${kind}`}" href="${esc(href)}">${esc(text)}</a>` : `<span class="pill${kind && ` ${kind}`}">${esc(text)}</span>`;
 
-export function buildSummary({ manifest, scope, plans, adrs, revision, date }) {
+// `planFiles` names the file of a plan by task ID, for its relative links: a
+// plan without one is taken as planned. The scope lies beside the page, and
+// an ADR comes with its file.
+export function buildSummary({ manifest, scope, plans, adrs, revision, date, planFiles = {} }) {
   const unfinished = manifest.tasks.filter(task => plans[task.id]);
   const open = new Set(unfinished.map(task => task.id));
   const blocked = unfinished.filter(task => task.external_blocker);
-  const title = /^# (.+)$/m.exec(scope ?? '')?.[1] ?? `Milestone ${manifest.milestone}`;
-  const decisions = adrs.map(({ file, text }) => ({
-    id: path.basename(file, '.md'),
-    title: /^# (.+)$/m.exec(text)?.[1] ?? file,
-    status: /\*\*Status:\*\* (\w+)/.exec(text)?.[1] ?? 'Unknown',
-    text: prose(text),
-  }));
+  const page = prose(scope), title = page.title ?? `Milestone ${manifest.milestone}`;
+  const planFile = task => planFiles[task.id] ?? `docs/plans/planned/${task.id}-${task.slug}.md`;
+  const decisions = adrs.map(({ file, text }) => {
+    const parts = prose(text);
+    return { id: path.basename(file, '.md'), file, title: parts.title ?? file, status: /\*\*Status:\*\* (\w+)/.exec(text)?.[1] ?? 'Unknown', text: parts.body };
+  });
   // The issue link is written only for a repository and a number of the shape the manifest check accepts.
   const issueUrl = task => /^[\w.-]+\/[\w.-]+$/.test(manifest.repository ?? '') && Number.isInteger(task.issue) ? `https://github.com/${manifest.repository}/issues/${task.issue}` : null;
   // A finished task has no card on the page, so a finished dependency is text, not a link.
@@ -221,14 +319,14 @@ export function buildSummary({ manifest, scope, plans, adrs, revision, date }) {
     ? `<ol class="layers">${layers.join('')}</ol><p class="note">Generated from the manifest. The tasks of one layer do not depend on each other and can run in parallel; each later layer needs the ones before it. A finished dependency is marked done.</p>`
     : '<p class="note">No tasks yet.</p>';
   const card = task => {
-    const part = name => md(section(plans[task.id], name));
+    const part = name => md(section(plans[task.id], name), planFile(task));
     return `<div class="card" id="${anchor(task.id)}"><div class="task-head">${pill(task.id, '')}<h3>${esc(task.title)}</h3>${task.issue == null ? '' : pill(`#${task.issue}`, 'plain', issueUrl(task))}</div>`
       + `<div class="meta">${task.depends_on.length ? task.depends_on.map(id => need(id, `needs ${id}`)).join('') : pill('no dependencies', 'plain')}${task.adrs.map(adrPill).join('')}`
       + `${task.external_blocker ? pill(`Blocked: ${task.external_blocker}`, 'warn') : ''}</div>${part('Goal')}`
       + `<div class="cols"><div><h4>Acceptance criteria</h4>${part('Acceptance Criteria')}</div><div><h4>Flow</h4>${part('Flow')}</div></div>`
       + `<details><summary>Scope, components, steps, tests and risks</summary>${folded.map(name => `<h4>${name}</h4>${part(name)}`).join('')}</details></div>`;
   };
-  const decision = adr => `<div class="card" id="adr-${anchor(adr.id)}"><div class="task-head"><h3>${esc(adr.title)}</h3>${pill(adr.status, adr.status === 'Accepted' ? '' : 'warn')}</div>${md(adr.text)}</div>`;
+  const decision = adr => `<div class="card" id="adr-${anchor(adr.id)}"><div class="task-head"><h3>${esc(adr.title)}</h3>${pill(adr.status, adr.status === 'Accepted' ? '' : 'warn')}</div>${md(adr.text, adr.file)}</div>`;
 
   // The Content-Security-Policy is the second line of defence: markup that
   // slipped through the escaping could still load and run nothing.
@@ -245,7 +343,7 @@ export function buildSummary({ manifest, scope, plans, adrs, revision, date }) {
 <div class="layout">
 <nav>${nav}</nav>
 <main>${header}
-<section id="scope"><h2>Scope</h2><div class="card">${md(prose(scope))}</div></section>
+<section id="scope"><h2>Scope</h2><div class="card">${md(page.body, `${pageDir}/milestone${manifest.milestone}.md`)}</div></section>
 <section id="dependencies"><h2>Task dependencies</h2><div class="card">${dependencies}</div></section>
 <section><h2>Tasks</h2>${unfinished.map(card).join('\n')}</section>
 ${decisions.length ? `<section><h2>Architecture decisions</h2>${decisions.map(decision).join('\n')}</section>` : ''}
@@ -310,26 +408,28 @@ details { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 10px
 summary { cursor: pointer; color: var(--accent); font-size: 14px; font-weight: 600; }
 .note { color: var(--muted); font-size: 13px; }
 @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } nav { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--line); } main { padding: 20px 16px 60px; } .cols, .layers > li { grid-template-columns: 1fr; } }
-@media print { nav { display: none; } .layout { display: block; } details > * { display: block; } .card { break-inside: avoid; } }
+@media print { nav { display: none; } .layout { display: block; } details > * { display: block; } details::details-content { content-visibility: visible; } .card { break-inside: avoid; } }
 `;
 
 if (process.argv[1] && fs.realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
     const manifest = JSON.parse(read('docs/plans/backlog.json'));
     validateManifest(manifest);
-    const plans = {};
+    const plans = {}, planFiles = {};
     for (const task of manifest.tasks) {
-      const text = read(`docs/plans/planned/${task.id}-${task.slug}.md`) ?? read(`docs/plans/active/${task.id}-${task.slug}.md`);
-      if (text !== null) plans[task.id] = text;
+      for (const phase of ['planned', 'active']) {
+        const file = `docs/plans/${phase}/${task.id}-${task.slug}.md`, text = read(file);
+        if (text !== null && plans[task.id] === undefined) [plans[task.id], planFiles[task.id]] = [text, file];
+      }
     }
     const adrFiles = [...new Set(manifest.tasks.filter(task => plans[task.id]).flatMap(task => task.adrs))].sort();
-    const scopeFile = `docs/product/milestone${manifest.milestone}.md`;
+    const scopeFile = `${pageDir}/milestone${manifest.milestone}.md`;
     const scope = read(scopeFile);
     if (scope === null) throw new Error(`${scopeFile} is missing: the summary describes the agreed scope`);
     let revision = 'uncommitted';
     try { revision = execFileSync('git', ['rev-parse', '--short', 'HEAD'], { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); } catch { /* a repository without commits */ }
-    const out = `docs/product/milestone${manifest.milestone}-summary.html`;
-    fs.writeFileSync(path.join(root, out), buildSummary({ manifest, scope, plans, adrs: adrFiles.map(file => ({ file, text: read(file) })), revision, date: new Date().toISOString().slice(0, 10) }));
+    const out = `${pageDir}/milestone${manifest.milestone}-summary.html`;
+    fs.writeFileSync(path.join(root, out), buildSummary({ manifest, scope, plans, planFiles, adrs: adrFiles.map(file => ({ file, text: read(file) })), revision, date: new Date().toISOString().slice(0, 10) }));
     console.log(`Wrote ${out}: ${Object.keys(plans).length} tasks, ${adrFiles.length} ADRs`);
   } catch (error) { console.error(`FAIL: ${error.message}`); process.exitCode = 1; }
 }
