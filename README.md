@@ -124,13 +124,13 @@ Every condition must hold. One that fails, or that cannot be ticked with certain
 | --- | --- | --- |
 | 1 | Qualify: each condition ticked against the request | All hold, or the run has ended with the failed one named |
 | 2 | Inspect: the code the change touches, the pattern it follows, the tests of both | The files, the pattern and the proving test are named |
-| 3 | Branch: `quick/<short-description>` from the fetched base branch, on a clean tree | The checkout is on it |
+| 3 | Branch: `quick/<short-description>` from the fetched base branch, in a worktree of its own: your checkout stays as it is | The worktree is on it |
 | 4 | Change: the smallest one that satisfies the request | Every changed line serves it |
 | 5 | Validate: the tests of the changed area; lint, format and type check of the changed files | Each command has its result as it ran; a check that was not run is recorded as not run |
 | 6 | Review the diff: read whole, once | It holds the change and nothing else; then it is committed |
 | 7 | See it: one look at a visible change, the cheapest way that shows it, never a full acceptance environment | It was seen, or the pull request says why not |
 | 8 | Pull request to the base branch | It is open |
-| 9 | Stop | You have its URL; review and merge are yours |
+| 9 | Stop | You have its URL and the worktree to remove after the merge; review and merge are yours |
 
 It creates no milestone, backlog task, GitHub issue, task plan, Mermaid flow, summary page, integration branch or approval gate, and it merges nothing. It uses neither the gate helper nor a reviewer agent: its proof is the targeted validation and its own reading of the diff, and its review is yours, on the pull request.
 
