@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { baseBranch, validateManifest } from './agent-workflow.mjs';
+import { baseBranch, mirrorsIssues, validateManifest } from './agent-workflow.mjs';
 import { needsGate, toolingChange } from './agent-scope.mjs';
 
 // Local delivery (docs/agents/workflow.md): tasks are claimed, gated and
@@ -106,8 +106,9 @@ function publish(manifest, ids) {
   const branch = manifest.integration_branch, started = Date.now();
   const held = Boolean(ids) && tryGit('rev-parse', '--verify', '--quiet', `refs/remotes/origin/${branch}`) === tipOf(branch);
   const pushed = held || tryGit('push', '--quiet', 'origin', `${branch}:${branch}`) !== null;
-  const synced = spawnSync(process.execPath, [path.join(root, 'scripts/agent-issues.mjs'), 'sync', ...(ids ? ['--only', ids.join(',')] : [])], { cwd: root, stdio: 'inherit' }).status === 0;
-  log({ event: 'publish', mode: ids ? 'targeted' : 'full', at: new Date(started).toISOString(), seconds: Math.round((Date.now() - started) / 100) / 10, push: held ? 'skipped' : pushed ? 'pushed' : 'failed', sync: synced ? 'ok' : 'failed' });
+  const issues = mirrorsIssues(manifest);
+  const synced = !issues || spawnSync(process.execPath, [path.join(root, 'scripts/agent-issues.mjs'), 'sync', ...(ids ? ['--only', ids.join(',')] : [])], { cwd: root, stdio: 'inherit' }).status === 0;
+  log({ event: 'publish', mode: ids ? 'targeted' : 'full', at: new Date(started).toISOString(), seconds: Math.round((Date.now() - started) / 100) / 10, push: held ? 'skipped' : pushed ? 'pushed' : 'failed', sync: !issues ? 'off' : synced ? 'ok' : 'failed' });
   if (pushed && synced) { if (!ids) fs.rmSync(syncPending(), { force: true }); return true; }
   markPending();
   console.error(`WARN: GitHub was not updated (${[!pushed && `push of ${branch}`, !synced && 'issue sync'].filter(Boolean).join(', ')} failed). Run: ${self} publish`);
@@ -118,7 +119,7 @@ function publish(manifest, ids) {
 function mirror(manifest, ids, defer) {
   if (!manifest.repository) return 'Nothing was pushed.';
   if (defer) { markPending(); return `Publishing deferred: run ${self} publish.`; }
-  return publish(manifest, ids) ? `Pushed ${manifest.integration_branch}; issues synced.` : 'GitHub was not updated.';
+  return publish(manifest, ids) ? `Pushed ${manifest.integration_branch}${mirrorsIssues(manifest) ? '; issues synced' : ''}.` : 'GitHub was not updated.';
 }
 
 // A gate record is JSON. A record of the helper before it, plain text
@@ -324,7 +325,7 @@ function claim(manifest, ids, defer) {
   }
   // The claim of a task without an issue creates it and writes its number into
   // this checkout, to be committed on the task's branch: one task, one checkout.
-  const unmirrored = manifest.repository && tasks.length > 1 ? tasks.filter(task => task.issue == null).map(task => task.id) : [];
+  const unmirrored = mirrorsIssues(manifest) && tasks.length > 1 ? tasks.filter(task => task.issue == null).map(task => task.id) : [];
   assert(!unmirrored.length, `${unmirrored.join(', ')} ${unmirrored.length > 1 ? 'have' : 'has'} no issue yet: claim ${unmirrored.length > 1 ? 'each' : 'it'} on its own, in the checkout that delivers it, and commit the issue number on its branch`);
   // Creating the branch is the claim: Git refuses a second one. One
   // transaction creates every branch of a round, from one revision, or none.
@@ -526,7 +527,7 @@ async function main() {
   if (command === 'publish') {
     const result = publish(manifest);
     assert(result !== false, 'GitHub is still out of sync');
-    return console.log(result ? `Pushed ${integration}; issues synced.` : 'backlog.json names no repository: nothing to publish.');
+    return console.log(result ? `Pushed ${integration}${mirrorsIssues(manifest) ? '; issues synced' : ''}.` : 'backlog.json names no repository: nothing to publish.');
   }
   if (command === 'gate') {
     const name = args[0] ?? 'task-check';

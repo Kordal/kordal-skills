@@ -235,7 +235,8 @@ test('every scaffold file a skill, an agent, a document or a script names exists
 });
 test('the sections of the scaffold\'s documents that other files point to exist under their exact headings', () => {
   const kept = {
-    'docs/agents/workflow.md': ['Sources of truth', 'Deliver one task', 'Gates', 'A parallel round', 'Add a task during delivery', 'First look', 'GitHub mirror', 'Timings'],
+    'docs/agents/workflow.md': ['Sources of truth', 'Deliver one task', 'Add a task during delivery', 'First look'],
+    'docs/agents/orchestration.md': ['Gates', 'A parallel round', 'GitHub mirror', 'Timings'],
     'docs/agents/acceptance.md': ['The acceptance task', 'A standalone feature', 'Open the pull request'],
     'docs/agents/planning.md': ['1. Establish the baseline', '2. Choose one user outcome', '3. Map the journey and agree scope', '4. Resolve major uncertainties', '5. Prepare the delivery backlog', '6. Check readiness and hand off', 'Plan a feature'],
     'AGENTS.md': ['How work enters'],

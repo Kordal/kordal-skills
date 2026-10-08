@@ -32,11 +32,11 @@ Every condition must hold. Tick each against the request, opening code only wher
 
 A condition that fails, or that you cannot tick with certainty, ends the run: [escalate](#escalate). A request is never stretched to fit.
 
-**During an active milestone or feature** the change must stay clear of it. A scaffolded project (it has `docs/plans/backlog.json`) says whether one is active with `node scripts/agent-local.mjs phase`, the one test "How work enters" of its `AGENTS.md` defines:
+**During an active milestone** the change must stay clear of it. A scaffolded project (it has `docs/plans/backlog.json`) says whether one is active with `node scripts/agent-local.mjs phase`, the one test "How work enters" of its `AGENTS.md` defines:
 
 - **`delivering`**: `git diff --name-only <base>...<integration>` lists the files the milestone has changed, between the base branch of step 3 and the manifest's `integration_branch`. A change that touches none of them is still QUICK, from the base branch. One that touches any joins the milestone instead: `/kordal-plan-feature`, or `/kordal-bug` for a bug.
 - **`between`**: nothing is active.
-- **The helper's usage text**: the scaffold is older than this skill. Apply the file test wherever the integration branch exists, and tell the owner that `/kordal-plan-update` is due.
+- **`phase` fails**: the scaffold is out of date. Tell the owner that `/kordal-plan-update` is due, and stop.
 
 A repository without the scaffold has no milestone.
 
@@ -50,14 +50,14 @@ Read only what the change sits in: the code it touches, the existing implementat
 
 The working tree has to be clean (`git status --porcelain` prints nothing); one that is not ends the run with the owner told what is in it. `git fetch`, then find the base branch:
 
-- **a scaffolded project** (it has `docs/plans/backlog.json`): `node scripts/agent-local.mjs base`. Where an older helper answers with its usage text, it is `base_branch` of the manifest, `main` without one;
+- **a scaffolded project** (it has `docs/plans/backlog.json`): `node scripts/agent-local.mjs base`;
 - **any other repository**: its default branch, `gh repo view --json defaultBranchRef --jq .defaultBranchRef.name`, or `git symbolic-ref --short refs/remotes/origin/HEAD | sed 's|^origin/||'`.
 
 Branch from its fetched tip: `git switch -c quick/<short-description> --no-track origin/<base>`, as in `quick/fix-empty-state-label`. Done when the checkout is on that branch and you have noted the branch it was on before.
 
 ## 4. Change
 
-Make the smallest change that satisfies the request, in the pattern step 2 found, with its test where the repository tests that kind of code. Done when the request is met and every changed line serves it.
+Make the smallest change that satisfies the request, in the pattern step 2 found, with its test where the repository tests that kind of code. A choice a later reader would question (why this default, why not the obvious alternative) gets one dated line in `docs/DECISIONS.md` where the repository has that file, in the same commit. Done when the request is met and every changed line serves it.
 
 ## 5. Validate
 
@@ -112,7 +112,7 @@ Give the owner the pull request's URL, the validation results, and the branch th
 At any step, as soon as a condition of step 1 fails or turns uncertain. Stop, tell the owner which condition and what showed it, and name the next level, the first that applies:
 
 - `/kordal-issue <request>`: the repository has no scaffold (no `docs/plans/backlog.json`);
-- `/kordal-plan-feature <request>`: it fits one to three tasks and needs no new architecture decision;
+- `/kordal-plan-feature <request>`: it fits one plan and one pull request and needs no new architecture decision;
 - `/kordal-plan`: it is larger, or needs an architecture decision.
 
 Commit work already done on its `quick/` branch, unpushed and without a pull request, and name the branch: the next level decides what to take from it.

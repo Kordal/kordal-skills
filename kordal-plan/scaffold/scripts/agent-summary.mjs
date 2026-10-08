@@ -13,7 +13,7 @@ import { section, validateManifest } from './agent-workflow.mjs';
 // no text of a plan, the manifest or an ADR can run in the owner's browser.
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = file => { try { return fs.readFileSync(path.join(root, file), 'utf8'); } catch { return null; } };
-const folded = ['Scope', 'Out of Scope', 'Affected Components', 'Implementation Steps', 'Tests', 'Risks'];
+const folded = ['Out of Scope', 'Affected Components'];
 
 // Every value goes through esc on its way into the page, as text and as an
 // attribute value alike, so both quote characters are escaped.
@@ -323,8 +323,11 @@ export function buildSummary({ manifest, scope, plans, adrs, revision, date, pla
     return `<div class="card" id="${anchor(task.id)}"><div class="task-head">${pill(task.id, '')}<h3>${esc(task.title)}</h3>${task.issue == null ? '' : pill(`#${task.issue}`, 'plain', issueUrl(task))}</div>`
       + `<div class="meta">${task.depends_on.length ? task.depends_on.map(id => need(id, `needs ${id}`)).join('') : pill('no dependencies', 'plain')}${task.adrs.map(adrPill).join('')}`
       + `${task.external_blocker ? pill(`Blocked: ${task.external_blocker}`, 'warn') : ''}</div>${part('Goal')}`
-      + `<div class="cols"><div><h4>Acceptance criteria</h4>${part('Acceptance Criteria')}</div><div><h4>Flow</h4>${part('Flow')}</div></div>`
-      + `<details><summary>Scope, components, steps, tests and risks</summary>${folded.map(name => `<h4>${name}</h4>${part(name)}`).join('')}</details></div>`;
+      // The Flow is optional: a plan without one shows its criteria alone.
+      + (section(plans[task.id], 'Flow')
+        ? `<div class="cols"><div><h4>Acceptance criteria</h4>${part('Acceptance Criteria')}</div><div><h4>Flow</h4>${part('Flow')}</div></div>`
+        : `<h4>Acceptance criteria</h4>${part('Acceptance Criteria')}`)
+      + `<details><summary>Out of scope and components</summary>${folded.map(name => `<h4>${name}</h4>${part(name)}`).join('')}</details></div>`;
   };
   const decision = adr => `<div class="card" id="adr-${anchor(adr.id)}"><div class="task-head"><h3>${esc(adr.title)}</h3>${pill(adr.status, adr.status === 'Accepted' ? '' : 'warn')}</div>${md(adr.text, adr.file)}</div>`;
 

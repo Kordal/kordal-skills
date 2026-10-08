@@ -1,67 +1,39 @@
 # <Task ID>: <Title>
 
-<!-- The title line equals "# <id>: <title>" of this task in backlog.json. -->
-
-## Goal
-
-<!-- The single outcome this task delivers. -->
-
-## Context
-
-<!-- Why this task exists; links to relevant docs, ADRs, and prior plans. -->
-
-## Task Contract
-
-<!-- This task's entry in backlog.json: stable ID/title/slug, issue, dependencies, ADR paths. The structure check (`make structure-check`, part of every task gate) compares the lines below with the manifest: the issue as #<number>, written here by scripts/agent-issues.mjs, and the depends_on IDs in manifest order, separated by ", ". -->
+<!-- The title line equals "# <id>: <title>" of this task in backlog.json. The manifest alone holds the task's dependencies and ADRs. The line below carries its GitHub issue where the manifest names a repository (the mirror script writes it); the structure check (`make structure-check`) compares it with the manifest. -->
 
 Issue: none
 
-Dependencies: none
+## Goal
 
-ADRs: none
+<!-- The single outcome this task delivers, and why, in two or three sentences. Link the scope, an ADR or a prior plan where the reader needs it. -->
 
 ## Acceptance Criteria
 
-<!-- Observable user/API outcomes, including failure behaviour, as checkboxes. Tick each when the code and its tests deliver it. -->
+<!-- Observable user/API outcomes, including failure behaviour, as checkboxes. Name the test kind where a criterion needs a slow one (browser, device, end-to-end, measurement). Tick each when the code and its tests deliver it. -->
 
 - [ ] <!-- criterion -->
 
 ## Flow
 
-<!-- A Mermaid flowchart (a ```mermaid block) of the journey this task delivers, including its failure paths. For a task with no user-facing journey, write "None: <reason>". -->
-
-## Scope
-
-<!-- What this task includes. -->
+<!-- Optional. Only for a task with a user journey: a Mermaid flowchart (a ```mermaid block) of that journey, including its failure paths. Delete the section otherwise. -->
 
 ## Out of Scope
 
-<!-- What this task deliberately excludes. -->
+<!-- What this task deliberately excludes, where a reader could assume otherwise. -->
 
 ## Affected Components
 
 <!-- Services, contracts, apps, and docs this task touches; `Makefile` where it adds a stage or a target there, since tasks of one round touch different files. -->
 
-## Implementation Steps
-
-1. <!-- step -->
-
-## Tests
-
-<!-- Unit tests, which the task gate runs. Then the slower tests (browser, device, end-to-end, measurement): the task writes them where a stage of MILESTONE_STAGES picks them up, and adds a stage only for a new kind of check; they run once, at the end of the milestone. -->
-
 ## Review
 
-<!-- Filled before the task is integrated: the reviewed commit and the reviewer, then every finding on the two axes (Standards, Spec) with what was done about it, or "No findings". -->
+<!-- Filled before the task is integrated, in one to three lines: the reviewed commit and the reviewer, or "Self-reviewed: low risk" with why; then each finding with what was done about it, or "No findings". -->
 
 Pending.
 
-## Risks
+## Notes
 
-<!-- Known risks and open questions. -->
-
-## Completion Notes
-
-<!-- Filled in when the task is done: what changed, deviations from the plan, follow-up work. Then move this file to ../completed/. -->
+<!-- Filled in when the task is done: what changed, deviations from the plan, risks found, follow-up work. Then move this file to ../completed/. -->
 
 Pending.

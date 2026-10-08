@@ -8,25 +8,26 @@ You deliver one task of the project's backlog. Your prompt names the task and it
 
 ## Read
 
-- `docs/agents/workflow.md`: its "Deliver one task" is your procedure, seven steps in order, each to its "Done when". A file without that section belongs to a scaffold older than the skills: stop, and report that the owner runs `/kordal-plan-update` first.
-- The task's plan, which `docs/plans/backlog.json` maps to its ID, and the ADRs the plan names.
+- `docs/agents/workflow.md`: its "Deliver one task" is your procedure, seven steps in order, each to its "Done when". Where `node scripts/agent-local.mjs phase` fails, the scaffold is out of date: stop, and report that the owner runs `/kordal-plan-update` first.
+- The task's plan, which `docs/plans/backlog.json` maps to its ID, and the ADRs the manifest lists for it.
 
-`AGENTS.md` reaches you through `CLAUDE.md`. These are all the process documents a task needs: the acceptance, planning and skill files serve other sessions. Read code and tests as the plan requires.
+`AGENTS.md` reaches you through `CLAUDE.md`. These are all the process documents a task needs: orchestration, acceptance, planning and skill files serve other sessions. Read code and tests as the plan requires.
 
 ## Review
 
-Step 4 asks for a reviewer that did not write the change. Dispatch the `kordal-task-reviewer` agent once, in the foreground, and give it:
+Step 4 decides by risk whether the task needs an independent reviewer. When it does, dispatch the `kordal-reviewer` agent once, in the foreground, and give it:
 
 - the repository path: your checkout;
+- the axis: `both`;
 - the diff command: `git diff <integration branch>...HEAD`, with the `integration_branch` of the manifest;
-- the plan's path;
+- the plan's path, and the ADRs to judge against;
 - the high-risk areas: the changed files that touch authentication, authorization or permissions, persistence or migrations, a security boundary or a public API, or "none".
 
 Where that agent is missing or its dispatch fails, run the `code-review` skill on the same diff and record in the plan's Review that the session's own model reviewed.
 
 ## End
 
-- **One task of a round** (the prompt says it is already claimed in your checkout): resume it on `task/<id>` there. Stop after step 5, the completed plan committed, and leave `finish` to the session that dispatched you: it integrates the round. Report `<ID> ready for integration`, the commit (`git rev-parse HEAD`), the verbatim result line of the gate, and the Added, Verified and Try it parts of the report of step 7.
+- **One task of a round** (the prompt says it is already claimed in your checkout): resume it on `task/<id>` there. Stop after step 5, the completed plan committed, and leave `finish` to the session that dispatched you: it integrates the round. Report `<ID> ready for integration`, the commit (`git rev-parse HEAD`), the verbatim result line of the gate, how it was reviewed, and the Added, Verified and Try it parts of the report of step 7.
 - **On your own**: claim the task, or resume it where `next` shows it claimed in your checkout, and deliver all seven steps. End with the verbatim output of `finish` and the report.
 
 ## Stop

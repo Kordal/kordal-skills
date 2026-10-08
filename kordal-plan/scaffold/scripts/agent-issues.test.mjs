@@ -17,7 +17,7 @@ for (const name of ['GIT_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE', 'GIT_PREFIX', 
 // planned on main and on milestone1. Two of them, the second depending on the
 // first; or a round of three independent tasks, the task that waits for all
 // of them, and one that waits for that.
-const sections = ['Goal', 'Context', 'Task Contract', 'Scope', 'Out of Scope', 'Affected Components', 'Acceptance Criteria', 'Flow', 'Implementation Steps', 'Tests', 'Risks', 'Review', 'Completion Notes'];
+const sections = ['Goal', 'Acceptance Criteria', 'Flow', 'Out of Scope', 'Affected Components', 'Review', 'Notes'];
 const tasks = () => [
   { id: 'CAP-001', title: 'Identity', slug: 'identity', issue: null, depends_on: [], adrs: [] },
   { id: 'CAP-002', title: 'Freshness', slug: 'freshness', issue: null, depends_on: ['CAP-001'], adrs: [] },
@@ -32,10 +32,9 @@ const round = () => [
 const three = ['CAP-001', 'CAP-002', 'CAP-003'];
 const body = (task, heading) => {
   if (heading === 'Goal') return `Deliver ${task.title}.`;
-  if (heading === 'Task Contract') return `Issue: none\n\nDependencies: ${task.depends_on.join(', ') || 'none'}\n`;
   return heading === 'Acceptance Criteria' ? '- [x] Works\n- [x] Fails safely' : 'Text.';
 };
-const plan = task => `# ${task.id}: ${task.title}\n\n` + sections.map(s => `## ${s}\n\n${body(task, s)}\n`).join('\n');
+const plan = task => `# ${task.id}: ${task.title}\n\nIssue: none\n\n` + sections.map(s => `## ${s}\n\n${body(task, s)}\n`).join('\n');
 // A make that fails the target MAKE_FAIL names and reports as scripts/gate.sh
 // does: its one stage, or premerge-check as not applicable.
 const fakeMake = `#!/bin/sh
@@ -129,6 +128,25 @@ scenario('an issue that exists under the task\'s title is adopted, not duplicate
   assert.equal(f.issues(['sync']).status, 0);
   assert.equal(f.github().issues.length, 2);
   assert.deepEqual(f.manifest().tasks.map(task => task.issue), [1, 2]);
+});
+scenario('"issues": false pushes the integration branch and leaves GitHub issues alone', t => {
+  const f = fixture(t, round());
+  f.write('docs/plans/backlog.json', JSON.stringify({ ...f.manifest(), issues: false }));
+  f.commit('issues off');
+  f.git('branch', 'milestone1');
+  assert.match(f.issues(['sync']).stdout, /^backlog\.json turns the issues off: nothing to sync\.\n$/);
+  const claimed = f.local(['claim', 'CAP-001', 'CAP-002']);
+  assert.equal(claimed.status, 0, `a round of tasks without issues is no refusal: ${claimed.stderr}`);
+  assert.equal(f.git('rev-parse', 'refs/remotes/origin/milestone1'), f.git('rev-parse', 'milestone1'), 'the claim pushes the integration branch');
+  f.complete('CAP-001');
+  const finished = f.local(['finish', 'CAP-001']);
+  assert.equal(finished.status, 0, finished.stderr);
+  assert.match(finished.stdout, /CAP-001 is on milestone1 at [a-f0-9]{40}\. Pushed milestone1\.\n$/);
+  assert.equal(f.git('rev-parse', 'refs/remotes/origin/milestone1'), f.git('rev-parse', 'milestone1'), 'finish pushes it too');
+  assert.match(f.local(['publish']).stdout, /^Pushed milestone1\.\n$/);
+  assert.ok(!fs.existsSync(path.join(f.dir, 'bin/github.json')), 'gh was never called');
+  assert.deepEqual(f.manifest().tasks.map(task => task.issue ?? null), [null, null, null, null, null]);
+  assert.ok(f.events().filter(e => e.event === 'publish').every(e => e.sync === 'off'));
 });
 scenario('claim and finish keep the status labels, the closed state and the pushed branch current', t => {
   const f = fixture(t);

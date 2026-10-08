@@ -1,6 +1,6 @@
 # Acceptance and the pull request
 
-For the session that runs a milestone's acceptance task, carries a standalone feature's acceptance, or opens the pull request. The task itself is delivered by [workflow.md](workflow.md), which also holds the rules of the [gates](workflow.md#gates) run here.
+For the session that runs a milestone's acceptance task, delivers a standalone feature, or opens a milestone's pull request. The task itself is delivered by [workflow.md](workflow.md), and the rules of the [gates](orchestration.md#gates) run here are in orchestration.md.
 
 ## The acceptance task
 
@@ -12,9 +12,9 @@ Everything the tasks did not run, once, on the whole milestone:
 
 1. Bring the base branch (`node scripts/agent-local.mjs base`) in when it moved: `git fetch` where the repository has a remote, and merge `origin/<base>`, or the local base branch without a remote, into this branch where it holds commits this branch lacks. The owner then accepts what the base branch will hold after the merge.
 2. `node scripts/agent-local.mjs gate pr-check`, then `node scripts/agent-local.mjs gate premerge-check`: every slow suite, the ones the tasks wrote included.
-3. Start the product and walk every task's Flow as a user would, on each device the milestone targets: the journeys and their failure paths.
+3. Start the product and walk every task's Flow, and the acceptance criteria of each task without one, as a user would, on each device the milestone targets: the journeys and their failure paths.
 
-Each failure becomes a task, [added and delivered through the workflow](workflow.md#add-a-task-during-delivery); then merge the integration branch into the acceptance branch and run the failed part again. Done when both gates cover the current head and every Flow has been walked on it.
+Each failure becomes a task, [added and delivered through the workflow](workflow.md#add-a-task-during-delivery); then merge the integration branch into the acceptance branch and run the failed part again. Done when both gates cover the current head and every Flow and criterion has been walked on it.
 
 ### Milestone review
 
@@ -41,20 +41,24 @@ Complete the plan, its Review naming the milestone review of the test document. 
 
 ## A standalone feature
 
-A feature planned while nothing else is in progress has its own integration branch, `feature/<slug>`, and no separate acceptance task: its last task carries the acceptance. Deliver that task by [Deliver one task](workflow.md#deliver-one-task) up to its review, then on its branch:
+A feature planned while nothing is in progress is one branch, one plan and one pull request: no backlog task, integration branch, GitHub issue, claim or `finish`. Its plan is `docs/plans/features/<slug>.md` ([Plan a feature](planning.md#plan-a-feature)). The owner's review and test happen on the pull request.
 
-1. Run the full check as the acceptance task does: bring the base branch in when it moved, run both gates, then walk the feature's Flows in the running product. Where the feature has more than one task, review the whole feature, the diff from the base branch, graded as the milestone review: fix its high and medium findings on this branch and gate again. Record it in the task's Review.
-2. Write `docs/product/feature-<slug>-test.md`: how to start the product from this branch, a checklist of what to do and what the owner should see, and the failure cases to try. Start the product, hand the owner the list and stop.
-3. Fix what the owner reports on this branch, run both gates again and hand the list back. When the owner says the feature passes, record that in the test document with the date and the tested commit, complete the plan and finish as [Finish](#finish) says, `git fetch` first: the gates cover what the owner tested, and the documentation recorded since needs no new gate.
+1. **Branch.** On a clean tree, `git fetch` and branch from the fetched base branch (`node scripts/agent-local.mjs base`): `git switch -c feature/<slug> --no-track origin/<base>`, or from the local base branch without a remote. Commit the plan first.
+2. **Implement** every acceptance criterion and failure behaviour with the test that proves it, by the rules of step 2 of [Deliver one task](workflow.md#deliver-one-task): decisions, tests, budget and environment. A product decision the plan leaves open, or one that needs an ADR, stops the feature: it is a milestone's work.
+3. **Gate.** `make task-check`, and `make pr-check` where `MILESTONE_STAGES` has stages that test what the feature changed. Note each result with its commit for the pull request's validation; a failure your change caused is fixed first.
+4. **Review** the whole feature once: the diff from where it branched (`git diff origin/<base>...HEAD`, or the local base branch without a remote), both axes, by an independent reviewer with a fresh context, graded as the [milestone review](#milestone-review). Fix the high and medium findings, gate again, and record the review and what was done about each finding in the plan's Review.
+5. **See it.** Where the change is visible to a user, start the product the cheapest way that shows it and walk the Flow, or the criteria, once. What it shows wrong returns to step 2.
+6. **Complete.** Tick each criterion, fill the plan's Notes, add a line to [DECISIONS.md](../DECISIONS.md) for each non-obvious choice the feature made, and commit. Done when no criterion is unticked and neither Review nor Notes says Pending: no structure check reads a feature plan, so this is yours to hold.
+7. **Pull request.** Push this branch only, without force, and open one pull request to the base branch with the [template](../../.github/pull_request_template.md)'s Summary and Merge Danger, then: the acceptance criteria, each with its proof; the validation results, a check not run reported as not run; how to see it, two or three steps; and `Closes #<number>` for a feature planned from an issue. Report its URL to the owner, who tests and merges.
 
 ## Open the pull request
 
-The pull request is the release of the milestone or the feature: open it on the owner's command, when `next` lists nothing and the test document, `docs/product/milestone<N>-test.md` or `docs/product/feature-<slug>-test.md`, records the owner's acceptance, and for a milestone its review.
+The pull request is the release of the milestone: open it on the owner's command, when `next` lists nothing and the test document, `docs/product/milestone<N>-test.md`, records the owner's acceptance and the milestone review.
 
 1. `git fetch`. When `origin/<base>` has commits the integration branch lacks (`git log --oneline <integration>..origin/<base>` prints them), stop and show them to the owner: they arrived after the acceptance, as a quick change or a hotfix does. The owner decides: accept that GitHub merges them with the milestone, a combination nothing tested; or have a task bring them in. That task is [added](workflow.md#add-a-task-during-delivery), merges `origin/<base>` on its branch and completes the queue: run both gates there, have the owner repeat the acceptance for what changed, record it in the test document, then `finish`.
-2. With a GitHub mirror, run `node scripts/agent-issues.mjs sync --check`: the mirror matches before the pull request names its issues. `node scripts/agent-local.mjs publish` repairs a difference.
+2. With GitHub issues, run `node scripts/agent-issues.mjs sync --check`: the mirror matches before the pull request names its issues. `node scripts/agent-local.mjs publish` repairs a difference.
 3. Open one pull request from the integration branch, which `finish` has pushed, to the base branch, with the Summary and Merge Danger of the [template](../../.github/pull_request_template.md); the Summary lists every task with its issue.
 4. The hosted check `Agent structure` runs `make agent-check` and the documentation check on it. A failed, missing, cancelled or skipped check is not a pass.
 5. Report the pull request and the state of its checks to the owner, who merges it. What reaches the base branch after this fetch is not seen here: the owner checks that the pull request is up to date with it before merging.
 
-Without a GitHub mirror, the owner decides how the base branch receives the integration branch.
+Without a `repository` in the manifest nothing was pushed: the owner decides how the base branch receives the integration branch.

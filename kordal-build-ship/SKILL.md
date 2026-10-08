@@ -1,6 +1,6 @@
 ---
 name: kordal-build-ship
-description: Open the pull request of the accepted milestone or feature; the owner merges.
+description: Open the pull request of the accepted milestone; the owner merges.
 disable-model-invocation: true
 ---
 
