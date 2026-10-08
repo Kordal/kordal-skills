@@ -30,7 +30,7 @@ At most seven, ranked by impact against effort, your recommendation first. For e
 - **What**: one sentence a user would recognise.
 - **Answers**: the findings it addresses.
 - **Effort**: small, medium or large, with the files it would touch.
-- **Size**: fits a feature (three tasks at most, no new architecture decision), needs a milestone, or needs an architecture decision; a proposal an agreed exclusion rules out says which.
+- **Size**: fits a feature (one plan and one pull request, no new architecture decision), needs a milestone, or needs an architecture decision; a proposal an agreed exclusion rules out says which.
 - **Risk**: what could get worse.
 
 ## Report

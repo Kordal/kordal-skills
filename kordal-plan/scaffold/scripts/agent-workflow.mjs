@@ -8,7 +8,12 @@ import { fileURLToPath } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const manifestPath = 'docs/plans/backlog.json';
 const phases = ['planned', 'active', 'completed'];
-const requiredSections = ['Goal', 'Context', 'Task Contract', 'Scope', 'Out of Scope', 'Affected Components', 'Acceptance Criteria', 'Flow', 'Implementation Steps', 'Tests', 'Risks', 'Review', 'Completion Notes'];
+// The sections every plan holds (docs/plans/template.md). A Flow is optional:
+// a task with a user journey draws one. "Completion Notes" is the older name of
+// "Notes", which plans written before the rename keep.
+const requiredSections = ['Goal', 'Acceptance Criteria', 'Out of Scope', 'Affected Components', 'Review', 'Notes'];
+const notesOf = text => section(text, 'Notes') || section(text, 'Completion Notes');
+const sectionOf = (text, heading) => heading === 'Notes' ? notesOf(text) : section(text, heading);
 const assert = (condition, message) => { if (!condition) throw new Error(message); };
 const planPath = (task, phase) => `docs/plans/${phase}/${task.id}-${task.slug}.md`;
 const readLocal = (file) => { try { return fs.readFileSync(path.join(root, file), 'utf8'); } catch { return null; } };
@@ -19,6 +24,9 @@ const branchName = value => typeof value === 'string' && /^[a-z0-9][a-z0-9/-]*$/
 // branch (Main, release-1.x, feature_x), nothing a command line could misread.
 const baseName = value => typeof value === 'string' && /^[A-Za-z0-9][A-Za-z0-9._/-]*$/.test(value) && !/\.\.|\/\/|[/.]$|\.lock$/.test(value);
 export const baseBranch = manifest => manifest.base_branch ?? 'main';
+// The manifest's `repository` is where the integration branch is pushed and its
+// pull request opened; `"issues": false` keeps the tasks off GitHub issues.
+export const mirrorsIssues = manifest => Boolean(manifest.repository) && manifest.issues !== false;
 // A section runs from its heading to the next heading of the same or a higher
 // level; HTML comments do not count as content.
 export function section(text, heading) {
@@ -45,6 +53,8 @@ export function validateManifest(manifest, read = readLocal) {
   assert(Array.isArray(manifest.tasks), 'backlog.json has no tasks list');
   // The GitHub repository whose issues mirror the tasks; optional.
   assert(manifest.repository == null || /^[\w.-]+\/[\w.-]+$/.test(manifest.repository), 'Invalid repository; use owner/name');
+  // Whether the tasks are mirrored as GitHub issues; optional, true by default.
+  assert(manifest.issues == null || typeof manifest.issues === 'boolean', 'Invalid issues; use true or false');
   // How long a gate may take, agreed with the owner at planning; optional.
   for (const [name, minutes] of Object.entries(manifest.budgets ?? {})) {
     assert(['task_gate_minutes', 'full_gate_minutes'].includes(name) && typeof minutes === 'number' && minutes > 0, `Invalid budget: ${name}`);
@@ -65,13 +75,13 @@ export function validateManifest(manifest, read = readLocal) {
     assert(files.length === 1, `${task.id} must have exactly one plan across planned/active/completed`);
     const { phase, text } = files[0];
     assert(text.startsWith(`# ${task.id}: ${task.title}\n`), `${task.id} plan title differs from manifest`);
-    if (task.issue != null) assert(new RegExp(`(#|/issues/)${task.issue}\\b`).test(section(text, 'Task Contract')), `${task.id} plan issue differs from manifest`);
-    assert(text.includes(`Dependencies: ${task.depends_on.join(', ') || 'none'}\n`), `${task.id} plan dependencies differ from manifest`);
-    for (const heading of requiredSections) assert(section(text, heading), `${task.id} missing section: ${heading}`);
+    // The manifest alone holds dependencies and ADRs; the plan repeats only its issue, which scripts/agent-issues.mjs writes.
+    if (task.issue != null) assert(new RegExp(`^Issue: .*(#|/issues/)${task.issue}\\b`, 'm').test(text), `${task.id} plan issue differs from manifest`);
+    for (const heading of requiredSections) assert(sectionOf(text, heading), `${task.id} missing section: ${heading}`);
     assert(/^- \[[ x]\] .+/m.test(section(text, 'Acceptance Criteria')), `${task.id} needs acceptance checkboxes`);
     if (phase === 'completed') {
       assert(!/^- \[ \]/m.test(section(text, 'Acceptance Criteria')), `${task.id} has incomplete acceptance criteria`);
-      for (const heading of ['Review', 'Completion Notes']) assert(!/^Pending\b/i.test(section(text, heading)), `${task.id} missing completion ${heading}`);
+      for (const heading of ['Review', 'Notes']) assert(!/^Pending\b/i.test(sectionOf(text, heading)), `${task.id} missing completion ${heading}`);
     }
     for (const adr of task.adrs) {
       assert(/^docs\/adr\/\d{3}-[a-z0-9-]+\.md$/.test(adr), `${task.id} invalid ADR path`);

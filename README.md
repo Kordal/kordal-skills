@@ -1,6 +1,6 @@
 # kordal-skills
 
-[Claude Code](https://claude.com/claude-code) skills that plan and deliver a product with agents. Work enters on one ladder, QUICK → FEATURE → MILESTONE: `/kordal-quick` makes one clear, low-risk change directly, `/kordal-plan-feature` plans a small addition, `/kordal-plan` plans a milestone. `/kordal-build` delivers what was planned, and `/kordal-improve` finds what is worth improving. Four agents do the delivery, review and investigation work the skills dispatch. In a milestone the repository of the project is the source of truth and GitHub issues mirror it.
+[Claude Code](https://claude.com/claude-code) skills that plan and deliver a product with agents. Work enters on one ladder, QUICK → FEATURE → MILESTONE: `/kordal-quick` makes one clear, low-risk change directly, `/kordal-plan-feature` plans a small addition, `/kordal-plan` plans a milestone. `/kordal-build` delivers what was planned, and `/kordal-improve` finds what is worth improving. Three agents do the delivery, review and investigation work the skills dispatch. In a milestone the repository of the project is the source of truth and GitHub issues mirror it.
 
 Two tracks stand beside the ladder. `/kordal-bug` takes a bug [from its report to a fix](#fixing-a-bug). The issue workflow, `/kordal-issue`, `/kordal-issue-review` and `/kordal-issue-code`, takes one change [from an issue to a pull request](#from-an-issue-to-a-pull-request), and only where you ask for an issue, hand the work off for later, or manage the repository through reviewed issues.
 
@@ -13,7 +13,7 @@ for skill in ~/Development/kordal-skills/kordal-*/; do ln -sfn "${skill%/}" ~/.c
 for agent in ~/Development/kordal-skills/agents/*.md; do ln -sfn "$agent" ~/.claude/agents/; done
 ```
 
-Any folder works in place of `~/Development/kordal-skills`. The two loops link every `kordal-*/` directory and every agent, so a `git pull` there updates them all; after a pull that adds a skill or an agent, run the loops again. The skills load in Claude Code sessions started after the install.
+Any folder works in place of `~/Development/kordal-skills`. A pull that removes an agent or a skill leaves its link dangling: `find ~/.claude/skills ~/.claude/agents -maxdepth 1 -xtype l -delete` clears them. Finish a feature planned the old way, as tasks on a `feature/<slug>` integration branch, before pulling a version where features are one plan and one pull request. The two loops link every `kordal-*/` directory and every agent, so a `git pull` there updates them all; after a pull that adds a skill or an agent, run the loops again. The skills load in Claude Code sessions started after the install.
 
 A pull updates the skills, not the projects: each project keeps the scaffold it was created with. After a pull that changes `kordal-plan/scaffold/`, run `/kordal-plan-update` in each scaffolded project before `/kordal-build`. A skill that needs a newer scaffold than the project has says so and stops.
 
@@ -28,14 +28,14 @@ The skills also call seven skills this repository does not ship. Planning uses `
 
 Every skill and agent runs on the model you choose for the session; none of them sets a model or an effort level. To pin one, add `model:` and `effort:` to the frontmatter of a skill or an agent.
 
-`/kordal-plan-feature`, `/kordal-plan-update`, `/kordal-build-all`, `/kordal-build-serial` and `/kordal-build-ship` are commands of their own that run the matching mode of `/kordal-plan` or `/kordal-build`.
+`/kordal-plan-update`, `/kordal-build-all`, `/kordal-build-serial` and `/kordal-build-ship` are commands of their own that run the matching mode of `/kordal-plan` or `/kordal-build`.
 
 ## Which command
 
 | Level | Command | Use when |
 | --- | --- | --- |
 | QUICK | `/kordal-quick <request>` | One clear, localized, low-risk change that follows an existing pattern. Ends at a pull request. No plan, task or issue |
-| FEATURE | `/kordal-plan-feature <idea>` | A small planned product addition: one to three tasks, no new architecture decision. Also whatever fails a QUICK condition but fits these limits |
+| FEATURE | `/kordal-plan-feature <idea>` | A small planned product addition, no new architecture decision: one plan, one branch, one review, one pull request; during a milestone, one to three of its tasks. Also whatever fails a QUICK condition but fits these limits |
 | MILESTONE | `/kordal-plan` | A substantial outcome: several coordinated changes, more than three tasks, or a new architecture decision |
 | BUG | `/kordal-bug <report>` | Behaviour that departs from what the product already promises |
 | ISSUE | `/kordal-issue` → `/kordal-issue-review` → `/kordal-issue-code` | Only when the owner asks for an issue, wants the work handed off for later, or the repository is managed through reviewed GitHub issues. Never chosen for a direct request to build something |
@@ -43,7 +43,7 @@ Every skill and agent runs on the model you choose for the session; none of them
 
 QUICK → FEATURE → MILESTONE is one ladder: each level takes what the level below must refuse.
 
-During an active milestone or feature (`node scripts/agent-local.mjs phase` prints `delivering` and the reason: a task of the manifest is unfinished, or the integration branch holds work the base branch lacks): a QUICK change that touches no file the milestone has changed (`git diff --name-only <base>...<integration>`) is still QUICK, from the base branch; anything else joins the milestone: a feature through `/kordal-plan-feature` (its tasks join the queue), a bug through `/kordal-bug` (it becomes a task), a reviewed issue through `/kordal-plan-feature <number>`. Larger work waits for the next milestone's planning. The command prints `between` otherwise; it decides by merging, not by ancestry, so a squash- or rebase-merged pull request counts as merged. A repository without the scaffold has no milestone.
+During an active milestone (`node scripts/agent-local.mjs phase` prints `delivering` and the reason: a task of the manifest is unfinished, or the integration branch holds work the base branch lacks): a QUICK change that touches no file the milestone has changed (`git diff --name-only <base>...<integration>`) is still QUICK, from the base branch; anything else joins the milestone: a feature through `/kordal-plan-feature` (its tasks join the queue), a bug through `/kordal-bug` (it becomes a task), a reviewed issue through `/kordal-plan-feature <number>`. Larger work waits for the next milestone's planning. The command prints `between` otherwise; it decides by merging, not by ancestry, so a squash- or rebase-merged pull request counts as merged. A repository without the scaffold has no milestone.
 
 A scaffolded project holds the same table in its `AGENTS.md`, under "How work enters", so that every agent routes a request the same way.
 
@@ -54,7 +54,7 @@ A scaffolded project holds the same table in its `AGENTS.md`, under "How work en
 | `/kordal-quick <request>` | Makes one clear, localized, low-risk change directly: a branch from the base branch, the smallest change, targeted validation, a pull request. Creates no plan, task or issue, and escalates whatever turns out risky or unclear. Never merges |
 | `/kordal-plan` | Plans the next milestone. In a new folder it scaffolds the project first. Resumes interrupted planning |
 | `/kordal-plan <idea>` | The same, starting from the idea |
-| `/kordal-plan-feature <idea or issue number>` | Plans a small addition: one to three tasks, no new architecture decision. Given an issue, plans from its text and makes it the first task's issue |
+| `/kordal-plan-feature <idea or issue number>` | Plans and delivers a small addition with no new architecture decision: one plan, one branch, one review, one pull request. During a milestone it joins the queue as one to three tasks instead. Given an issue, plans from its text and closes it from the pull request, or makes it the first task's issue |
 | `/kordal-plan-update` | Brings a project's scaffold up to date with this repository: a three-way merge per file, which keeps what the project changed. Has you decide the stages of the full and the resilience gate where the Makefile leaves them empty |
 | `/kordal-improve <question>` | Investigates a question about the product or its code; returns evidenced findings and ranked proposals. Changes no code |
 | `/kordal-issue <description>` | Writes a GitHub issue a coding agent can implement, when you ask for an issue or hand the work off for later: inspects the repository, writes testable acceptance criteria, creates the issue labelled `needs-review`. A direct request to build something is sent to its level instead |
@@ -65,7 +65,7 @@ A scaffolded project holds the same table in its `AGENTS.md`, under "How work en
 | `/kordal-build <ID>` | Delivers that task |
 | `/kordal-build-all` | Delivers the whole queue in rounds: up to five independent tasks side by side, each in its own worktree, integrated together |
 | `/kordal-build-serial` | The same, one task at a time |
-| `/kordal-build-ship` | Opens the pull request of the accepted milestone or feature, then stops the dev servers, emulators and containers the milestone started. The owner merges |
+| `/kordal-build-ship` | Opens the pull request of the accepted milestone, then stops the dev servers, emulators and containers the milestone started. The owner merges |
 
 Claude may start a command itself when the conversation calls for it. The milestone's pull request is opened only on your typed command: Claude cannot start `/kordal-build-ship`, and the `ship` mode of `/kordal-build` opens nothing unless you typed it.
 
@@ -76,11 +76,10 @@ The skills dispatch these; you do not call them yourself.
 | Agent | Dispatched by | Does |
 | --- | --- | --- |
 | `kordal-builder` | `/kordal-build-all`, `/kordal-build-serial` | Delivers one task: on its own from claim to report, or as one task of a parallel round up to its completed plan, which the session then integrates |
-| `kordal-task-reviewer` | `/kordal-build`, `kordal-builder` | Reviews one task's diff on both axes, Standards and Spec, in one pass. Read-only |
-| `kordal-reviewer` | `/kordal-build` | Reviews the milestone's diff on one axis; two run side by side. Read-only |
+| `kordal-reviewer` | `/kordal-build`, `/kordal-plan-feature`, `kordal-builder` | Reviews a diff on the axis it is given: both axes in one pass for a risky task or a feature; one axis each, two side by side, for the milestone. Read-only |
 | `kordal-investigator` | `/kordal-improve` | Reads the code and searches how others solve the question. Read-only |
 
-The builder is self-contained: it reads the task's plan, the ADRs the plan names and `docs/agents/workflow.md`, the one contract for delivering a task, and no skill file. A reviewer reads in proportion to the changed surface: the diff, the unit around each hunk, and the callers and callees its behaviour depends on. It reads a file whole, and traces its callers, only where the change touches authentication, authorization, persistence or migrations, a security boundary or a public API. The two reviewer definitions let you pin one model for the task review and another for the milestone review.
+The builder is self-contained: it reads the task's plan, the ADRs the manifest lists for it and `docs/agents/workflow.md`, the one contract for delivering a task, and no skill file; the orchestration, acceptance and planning documents serve other sessions. A reviewer reads in proportion to the changed surface: the diff, the unit around each hunk, and the callers and callees its behaviour depends on. It reads a file whole, and traces its callers, only where the change touches authentication, authorization, persistence or migrations, a security boundary or a public API.
 
 ## Planning a milestone
 
@@ -92,7 +91,7 @@ Six stages; a stage closes only with evidence. The owner decides at the stages i
 | 2 | **One user outcome**: "A [user] can [job], demonstrated by [result]" | `docs/product/milestone<N>.md` |
 | 3 | **Journey and scope**: capabilities, exclusions, acceptance scenarios, test budget; a prototype at real size for anything the user sees | `milestone<N>.md` completed |
 | 4 | Uncertainties: research, prototypes, architecture decisions (**only if a finding changes the scope**) | Proposed ADRs in `docs/adr/` |
-| 5 | Backlog: few, large tasks (about an hour of work at least), cut along components; one plan per task with acceptance criteria and a flow diagram | `docs/plans/planned/`, `backlog.json`, `milestone<N>-summary.html` |
+| 5 | Backlog: few, large tasks (about an hour of work at least), cut along components; one short plan per task with acceptance criteria, and a flow diagram where it has a user journey | `docs/plans/planned/`, `backlog.json`, `milestone<N>-summary.html` |
 | 6 | Handoff: issues created, integration branch `milestone<N>` created with `node scripts/agent-local.mjs start`, structure checks | First ready task |
 
 Stage 1 researches the delta. The first milestone, and one that takes the product in a new direction, get the full survey of existing solutions, with a web search. Every other milestone reads the earlier research notes and the improvement reports first, reuses the findings that still hold, and searches only for a new question, stale evidence (older than about six months, or known to have changed), a product area not covered before, or a meaningful development. The note records what was reused, with the note and the date it comes from, and what was refreshed or added, with the date and the reason.
@@ -104,11 +103,10 @@ Stage 1 researches the delta. The first milestone, and one that takes the produc
 `/kordal-plan-feature <idea>` is the level above QUICK, with effort in proportion to the feature:
 
 - it states the feature as one sentence, and asks you to confirm it only where the request leaves the behaviour open;
-- it checks the fit (one to three tasks, no new ADR, not excluded), and offers `/kordal-quick` for a request that meets every QUICK condition and touches no file an active milestone has changed;
-- it writes as few plans as the feature allows, and asks for your approval when the feature has more than one task or the fit is in doubt: a one-task feature whose request was unambiguous proceeds, its plan shown in the hand-off;
-- it registers the tasks, and generates no summary page: that is a milestone's artifact.
-
-A feature joins the work in progress when there is any; otherwise it gets its own branch `feature/<slug>` and its own pull request.
+- it checks the fit (one plan and one pull request, no new ADR, not excluded), and offers `/kordal-quick` for a request that meets every QUICK condition and touches no file an active milestone has changed;
+- between milestones it writes **one** plan, `docs/plans/features/<slug>.md`, and delivers it itself: a `feature/<slug>` branch from the base branch, the code and its tests, `make task-check`, one review of the whole diff by `kordal-reviewer`, one look at the running change, and one pull request that you test and merge. No backlog task, integration branch, GitHub issue or test document; it asks for your approval only when the fit is in doubt or the request was ambiguous;
+- during a milestone it writes one to three task plans instead, registers them in the queue, and `/kordal-build` delivers them;
+- it generates no summary page: that is a milestone's artifact.
 
 ## A quick change
 
@@ -187,7 +185,7 @@ Step 4 names the level for what turns out to be a feature, sends a fix that need
 
 ## Delivering
 
-Per task: claim, implement, gate, review, complete, integrate, report. In the project, `docs/agents/workflow.md` is the one contract for it, whoever delivers the task.
+Per task: claim, implement, gate, review, complete, integrate, report. In the project, `docs/agents/workflow.md` is the one contract for it, whoever delivers the task; `docs/agents/orchestration.md` holds the gates in full, parallel rounds, the GitHub mirror and timings, for the session that runs the queue.
 
 | Gate | Runs | When |
 | --- | --- | --- |
@@ -197,11 +195,11 @@ Per task: claim, implement, gate, review, complete, integrate, report. In the pr
 | `make agent-check` | The structure check and the agent tooling's own tests. No stage of a task | With the task gate of a branch that changes the agent tooling; in the hosted check of the pull request, beside the documentation check; by hand after a scaffold update |
 
 - **Gate.** `node scripts/agent-local.mjs gate` runs a gate on a committed, clean tree and records the result for the commit. A failed gate records nothing, and integration checks the record.
-- **Reuse.** A recorded gate covers every later commit until a runtime file changes: `gate` then runs nothing and says `reused`, and `--force` runs it anyway. The review, the completion notes and the owner's test document, committed after a gate, keep its result.
+- **Reuse.** A recorded gate covers every later commit until a runtime file changes: `gate` then runs nothing and says `reused`, and `--force` runs it anyway. The review, the plan's notes and the owner's test document, committed after a gate, keep its result.
 - **Documentation.** It needs no gate and keeps a recorded one, so it is checked where it is integrated: `finish` and `integrate` run the documentation check on the commit they integrate, unless a task gate on that very commit ran it, and move nothing while a link is broken.
 - **The end of the queue is enforced.** `finish` refuses the task that completes the queue unless a `pr-check` and a `premerge-check` cover its commit, and while the base branch has commits its branch lacks: the local one, or `origin`'s as last fetched.
 - **Stages.** A stage is a `.PHONY` make target with a recipe: a gate refuses one that make has nothing to run for, and a gate without stages fails. The single word `none`, as in `RESILIENCE_STAGES := none`, declares the full or the resilience gate not applicable to the product: it passes, and is recorded and reported as such. The task gate cannot be declared `none`.
-- **Review.** The diff on two axes, Standards and Spec, in one pass by the `kordal-task-reviewer` agent, in a context that has not seen the implementation, read-only. The milestone review uses two reviewers, one per axis. Recorded in the plan; an unreviewed task cannot be finished.
+- **Review, in proportion to the risk.** A task whose diff touches authentication, authorization, persistence or migrations, a security boundary or a public API, accepts an ADR, or changes more than 300 lines is reviewed on both axes, Standards and Spec, in one pass by the `kordal-reviewer` agent, in a context that has not seen the implementation, read-only. Any other task records the deliverer's own second reading as `Self-reviewed: low risk`, with the reason. The milestone review reads every task's change again, with two reviewers, one per axis. Recorded in the plan; an unreviewed task cannot be finished.
 - **No slow testing per task.** A task runs lint, the structure check and unit tests only. Browser, device and end-to-end tests are written in the task and run once, at the end.
 - **Parallel rounds.** `/kordal-build-all` delivers `READY` tasks that touch different files side by side, up to five in a round. One `claim` starts every branch from the same revision; each task gets a worktree and a `kordal-builder`, which stops once its completed plan is committed; one `integrate` then takes the round, all or nothing. It makes the checks of `finish` for every task, merges the branches without touching a checkout, runs one combined task gate on the assembled commit when more than one task changed runtime files, and advances the integration branch in one step. A conflict or a failed combined gate moves nothing: that round's tasks are finished one at a time. The task that completes the queue is never part of a round.
 - **Updates.** You hear of a task at its three phase boundaries: started; implemented and gated, with the review's findings; integrated, with the report. Each part of the acceptance task, the first look and a blocker get an update of their own. A mechanical step, such as a branch switched, a plan moved or a merge, gets none.
@@ -214,7 +212,7 @@ A milestone ends with its acceptance task, which `docs/agents/acceptance.md` hol
 
 ## GitHub
 
-Optional, asked once when a project is scaffolded. With it:
+A project with a GitHub `origin` names it as `"repository"` in the manifest: the integration branch is pushed there and the milestone's pull request opened from it. Issues are optional, asked once when the project is scaffolded, recommending no unless other people follow the work on GitHub; `"issues": false` in the manifest turns them off, and removing that line between milestones, then running `node scripts/agent-local.mjs publish`, turns them on. With issues:
 
 - one issue per task in the GitHub milestone `Milestone <N>`, generated from the plan;
 - one status label per issue: `waiting`, `blocked`, `ready`, `in-progress`, `done`;
@@ -226,7 +224,7 @@ The updates are targeted. `claim`, `finish` and `integrate` each update GitHub o
 
 When GitHub cannot be reached, or the update was deferred, the local result stands, and `next` reports that GitHub is out of sync until `publish` succeeds.
 
-The base branch receives one pull request per milestone or feature. A push of the integration branch starts no hosted check. A clone that lacks the integration branch takes it from `origin`: `node scripts/agent-local.mjs start`.
+The base branch receives one pull request per milestone, and one per standalone feature. A push of the integration branch starts no hosted check. A clone that lacks the integration branch takes it from `origin`: `node scripts/agent-local.mjs start`.
 
 ## The base branch
 
@@ -243,10 +241,11 @@ The name is the repository's own (`master`, `trunk`, `release-1.x`) and differs 
 | Path | Contents |
 | --- | --- |
 | `AGENTS.md`, `CLAUDE.md` | Instructions for every agent: rules, communication style, how work enters, which document to read when. `CLAUDE.md` only points to `AGENTS.md` |
-| `docs/agents/` | `workflow.md`, the one contract for delivering a task; `acceptance.md`, the acceptance task and the pull request; `planning.md`, the six stages and the feature path |
+| `docs/agents/` | `workflow.md`, the one contract for delivering a task; `orchestration.md`, the gates, parallel rounds, the GitHub mirror and timings; `acceptance.md`, the acceptance task, a standalone feature and the pull request; `planning.md`, the six stages and the feature path |
 | `docs/product/` | Vision, scope, research, summary page, test lists |
 | `docs/adr/` | Architecture Decision Records |
-| `docs/plans/` | `backlog.json`, the plan template, plans in `planned/`, `active/`, `completed/` |
+| `docs/DECISIONS.md` | One dated line per small, non-obvious choice that is not architecture |
+| `docs/plans/` | `backlog.json`, the plan template, task plans in `planned/`, `active/`, `completed/`, standalone feature plans in `features/` |
 | `scripts/agent-local.mjs` | The queue, the gates and the integration: `next`, `base`, `phase`, `start`, `claim`, `gate`, `finish`, `integrate`, `publish`, `timings` |
 | `scripts/agent-workflow.mjs` | The structure check: the backlog against its plans and ADRs |
 | `scripts/agent-issues.mjs` | The GitHub mirror: `sync`, `sync --check`, `comment` |

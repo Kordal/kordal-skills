@@ -12,7 +12,7 @@ for (const name of ['GIT_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE', 'GIT_PREFIX', 
 
 // buildSummary on an in-memory backlog: one finished task and two unfinished
 // ones, the second with a Flow, an ADR and a blocker.
-const plan = (id, title, flow, goal = `Deliver ${title}.`) => `# ${id}: ${title}\n\n## Goal\n\n${goal}\n\n## Acceptance Criteria\n\n- [ ] Works\n- [x] Fails clearly\n\n## Flow\n\n${flow}\n\n## Scope\n\nText.\n`;
+const plan = (id, title, flow, goal = `Deliver ${title}.`) => `# ${id}: ${title}\n\n## Goal\n\n${goal}\n\n## Acceptance Criteria\n\n- [ ] Works\n- [x] Fails clearly\n\n${flow === null ? '' : `## Flow\n\n${flow}\n\n`}## Out of Scope\n\nText.\n`;
 const flow = '```mermaid\nflowchart TD\n  A["Open"] --> B\n```';
 const manifest = {
   version: 1, milestone: 2, integration_branch: 'milestone2', repository: 'owner/product',
@@ -97,8 +97,7 @@ test('the summary carries the scope, the unfinished tasks with their sections, a
   assert.ok(reminders.includes('<span class="pill">CAP-003</span><h3>Reminders</h3></div>'), 'no issue yet');
   assert.ok(reminders.includes('<div class="meta"><a class="pill plain" href="#CAP-002">needs CAP-002</a><a class="pill plain" href="#adr-001-email">ADR 001</a><span class="pill warn">Blocked: SMTP credentials from the owner</span></div><div class="md"><p>Deliver Reminders.</p></div>'));
   assert.ok(reminders.includes('<h4>Acceptance criteria</h4><div class="md"><ul><li><input type="checkbox" disabled> Works</li><li><input type="checkbox" disabled checked> Fails clearly</li></ul></div>'));
-  assert.ok(reminders.includes('<details><summary>Scope, components, steps, tests and risks</summary><h4>Scope</h4><div class="md"><p>Text.</p></div><h4>Out of Scope</h4><p class="note">Not stated.</p><h4>Affected Components</h4>'), 'the folded sections need no script: <details>');
-  for (const name of ['Implementation Steps', 'Tests', 'Risks']) assert.ok(reminders.includes(`<h4>${name}</h4>`), name);
+  assert.ok(reminders.includes('<details><summary>Out of scope and components</summary><h4>Out of Scope</h4><div class="md"><p>Text.</p></div><h4>Affected Components</h4><p class="note">Not stated.</p></details>'), 'the folded sections need no script: <details>');
 
   assert.ok(html.includes('<section><h2>Architecture decisions</h2><div class="card" id="adr-001-email"><div class="task-head"><h3>ADR-001: Email</h3><span class="pill warn">Proposed</span></div><div class="md"><ul><li><strong>Status:</strong> Proposed</li></ul>\n<h2>Context</h2>\n<p>Text.</p></div></div></section>'));
   assert.ok(html.includes('<nav><h2>Summary</h2><a href="#overview">Overview</a><a href="#scope">Scope</a><a href="#dependencies">Task dependencies</a><h2>Tasks</h2><a href="#CAP-002"><b>CAP-002</b>Say &quot;hello&quot;, the owner&#39;s way</a><a href="#CAP-003"><b>CAP-003</b>Reminders</a><h2>Decisions</h2><a href="#adr-001-email">ADR-001: Email</a></nav>'));
@@ -106,6 +105,13 @@ test('the summary carries the scope, the unfinished tasks with their sections, a
   assert.match(html, /@media \(prefers-color-scheme: dark\)/);
   assert.ok(html.includes('@media print { nav { display: none; } .layout { display: block; } details > * { display: block; } details::details-content { content-visibility: visible; } '),
     'print shows the folded sections: where a closed <details> hides its content by content-visibility, display alone does not');
+});
+test('a plan without a Flow shows its acceptance criteria alone, and no empty Flow column', () => {
+  const given = input();
+  given.plans = { ...given.plans, 'CAP-003': plan('CAP-003', 'Reminders', null) };
+  const reminders = card(buildSummary(given), 'CAP-003');
+  assert.ok(reminders.includes('</div><h4>Acceptance criteria</h4><div class="md"><ul>'), reminders);
+  assert.ok(!reminders.includes('<h4>Flow</h4>') && !reminders.includes('class="cols"'));
 });
 test('the dependency view shows the layers, what each task needs and what is done or blocked', () => {
   assert.ok(buildSummary(input()).includes('<section id="dependencies"><h2>Task dependencies</h2><div class="card"><ol class="layers">'
@@ -376,13 +382,13 @@ test('HTML comments of the scope and of an ADR are not content, as in a plan sec
 
 // The real scripts/agent-summary.mjs in a project of its own: one finished
 // task, one planned with an ADR, one active.
-const sections = ['Goal', 'Context', 'Task Contract', 'Scope', 'Out of Scope', 'Affected Components', 'Acceptance Criteria', 'Flow', 'Implementation Steps', 'Tests', 'Risks', 'Review', 'Completion Notes'];
+const sections = ['Goal', 'Acceptance Criteria', 'Flow', 'Out of Scope', 'Affected Components', 'Review', 'Notes'];
 const tasks = [
   { id: 'CAP-001', title: 'Identity', slug: 'identity', issue: null, depends_on: [], adrs: [] },
   { id: 'CAP-002', title: 'Freshness', slug: 'freshness', issue: null, depends_on: ['CAP-001'], adrs: ['docs/adr/001-store.md'] },
   { id: 'CAP-003', title: 'Export', slug: 'export', issue: null, depends_on: ['CAP-001'], adrs: [] },
 ];
-const fullPlan = task => `# ${task.id}: ${task.title}\n\nDependencies: ${task.depends_on.join(', ') || 'none'}\n\n`
+const fullPlan = task => `# ${task.id}: ${task.title}\n\nIssue: none\n\n`
   + sections.map(s => `## ${s}\n\n${s === 'Acceptance Criteria' ? '- [x] Works' : `${s} of ${task.id}.`}\n`).join('\n');
 function project(t) {
   const dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'agent-summary-')));

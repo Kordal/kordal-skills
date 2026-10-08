@@ -4,7 +4,7 @@
 
 # The stages of the gates, in order; each is a .PHONY make target with a
 # recipe: the gate refuses a stage make has nothing to run for. Tasks add the
-# product's own stages here (docs/agents/workflow.md, "Gates"):
+# product's own stages here (docs/agents/orchestration.md, "Gates"):
 #   TASK_STAGES       every task: what runs in a minute or two with nothing started
 #   MILESTONE_STAGES  once, when the milestone is complete: the slow suites
 #   RESILIENCE_STAGES once, with them: operations, backup/restore, upgrade, release build

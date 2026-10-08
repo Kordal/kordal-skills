@@ -2,10 +2,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { section, validateManifest } from './agent-workflow.mjs';
+import { mirrorsIssues, section, validateManifest } from './agent-workflow.mjs';
 import { stateOf } from './agent-local.mjs';
 
-// The GitHub mirror of the backlog (docs/agents/workflow.md, "GitHub
+// The GitHub mirror of the backlog (docs/agents/orchestration.md, "GitHub
 // mirror"). The repository is the source of truth; this script makes the
 // issues of the manifest's `repository` match it and never reads a decision
 // from them:
@@ -157,6 +157,8 @@ if (process.argv[1] && fs.realpathSync(process.argv[1]) === fileURLToPath(import
     validateManifest(manifest);
     if (!manifest.repository) {
       console.log(`backlog.json names no repository: nothing to ${command}.`);
+    } else if (!mirrorsIssues(manifest)) {
+      console.log(`backlog.json turns the issues off: nothing to ${command}.`);
     } else if (command === 'comment') {
       const task = manifest.tasks.find(t => t.id === rest[0]);
       assert(task?.issue, `No issue for task ${rest[0] ?? ''}`);

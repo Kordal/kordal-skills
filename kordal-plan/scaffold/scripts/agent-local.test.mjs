@@ -15,7 +15,7 @@ for (const name of ['GIT_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE', 'GIT_PREFIX', 
 // planned on the base branch and on the integration branch milestone1: two
 // tasks, the second depending on the first, or a round of three independent
 // tasks and the task that waits for all of them. `make` is a fake.
-const sections = ['Goal', 'Context', 'Task Contract', 'Scope', 'Out of Scope', 'Affected Components', 'Acceptance Criteria', 'Flow', 'Implementation Steps', 'Tests', 'Risks', 'Review', 'Completion Notes'];
+const sections = ['Goal', 'Acceptance Criteria', 'Flow', 'Out of Scope', 'Affected Components', 'Review', 'Notes'];
 const tasks = [
   { id: 'CAP-001', title: 'Identity', slug: 'identity', depends_on: [], adrs: [] },
   { id: 'CAP-002', title: 'Freshness', slug: 'freshness', depends_on: ['CAP-001'], adrs: [] },
@@ -27,7 +27,7 @@ const round = [
   { id: 'CAP-004', title: 'Acceptance', slug: 'acceptance', depends_on: ['CAP-001', 'CAP-002', 'CAP-003'], adrs: [] },
 ];
 const three = ['CAP-001', 'CAP-002', 'CAP-003'];
-const plan = task => `# ${task.id}: ${task.title}\n\nDependencies: ${task.depends_on.join(', ') || 'none'}\n\n`
+const plan = task => `# ${task.id}: ${task.title}\n\nIssue: none\n\n`
   + sections.map(s => `## ${s}\n\n${s === 'Acceptance Criteria' ? '- [x] Works' : 'Text.'}\n`).join('\n');
 // The fake make logs every invocation with its arguments and the commit it ran
 // on, then passes, fails, hangs, leaves a file or a lock behind, or is not
@@ -344,7 +344,7 @@ scenario('a passed gate is reused while only documentation changes; --force and 
   const f = fixture(t);
   const head = f.implement();
   assert.equal(f.cli(['gate']).status, 0);
-  // The Review and the Completion Notes of the plan, and the owner's test document.
+  // The Review and the Notes of the plan, and the owner's test document.
   f.write('docs/plans/completed/CAP-001-identity.md', plan(tasks[0]).replace('## Review\n\nText.', '## Review\n\nNo findings.') + '\nDelivered.\n');
   f.commit('review and completion notes');
   f.write('docs/product/milestone1-test.md', '# Milestone 1 test\n\n- [x] The owner accepted it.\n');
@@ -391,13 +391,13 @@ scenario('pr-check runs only make pr-check over a covering task-check, and the t
   assert.deepEqual(f.makes().slice(5), ['make task-check', 'make pr-check']);
   assert.deepEqual(f.records().filter(name => name.startsWith(third)), [`${third}.task-check`]);
 });
-scenario('a standalone feature: the gates pass, the owner accepts in documentation, the gates are reused and finish succeeds', t => {
+scenario('a one-task queue: the gates pass, the owner accepts in documentation, the gates are reused and finish succeeds', t => {
   const f = fixture(t, { list: [tasks[0]] });
   const head = f.implement();
   for (const gate of [[], ['pr-check'], ['premerge-check']]) assert.equal(f.cli(['gate', ...gate]).status, 0);
   assert.deepEqual(f.makes(), ['make task-check', 'make pr-check', 'make premerge-check']);
   // The owner tests, and the acceptance and the completed plan are recorded: documentation.
-  f.write('docs/product/feature-identity-test.md', `# Identity\n\nThe owner accepted it at ${head}.\n`);
+  f.write('docs/product/milestone1-test.md', `# Identity\n\nThe owner accepted it at ${head}.\n`);
   f.write('docs/plans/completed/CAP-001-identity.md', plan(tasks[0]) + '\nAccepted by the owner.\n');
   f.commit('acceptance');
   assert.equal(f.cli(['gate', 'pr-check']).stdout, `pr-check passed on ${head}; no runtime file changed since: reused.\n`);
@@ -408,7 +408,7 @@ scenario('a standalone feature: the gates pass, the owner accepts in documentati
   assert.equal(f.git('rev-parse', 'milestone1'), f.git('rev-parse', 'HEAD'));
   { const done = f.cli(['next']); assert.deepEqual([done.status, done.stdout, done.stderr], [0, '', '']); }
 });
-scenario('a standalone feature: a runtime fix after the gates is refused until every gate ran again', t => {
+scenario('a one-task queue: a runtime fix after the gates is refused until every gate ran again', t => {
   const f = fixture(t, { list: [tasks[0]] });
   f.implement();
   for (const gate of [[], ['pr-check'], ['premerge-check']]) assert.equal(f.cli(['gate', ...gate]).status, 0);

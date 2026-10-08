@@ -28,7 +28,7 @@ Start only when all of these hold:
 - a comment that counts holds an Issue Review with the result `READY`, and its `createdAt` is later than the issue's `lastEditedAt` (`null`: the body was never edited);
 - the issue has acceptance criteria;
 - no blocking question is open, in the body or in a comment that counts;
-- the repository is not delivering a milestone or a feature: it has no `docs/plans/backlog.json`, or `node scripts/agent-local.mjs phase` prints `between`, the one test "How work enters" of its `AGENTS.md` defines. One in progress takes the issue in as a task: `/kordal-plan-feature <number>`. A helper that answers `phase` with its usage text belongs to a scaffold older than this skill: `/kordal-plan-update` comes first.
+- the repository is not delivering a milestone: it has no `docs/plans/backlog.json`, or `node scripts/agent-local.mjs phase` prints `between`, the one test "How work enters" of its `AGENTS.md` defines. One in progress takes the issue in as a task: `/kordal-plan-feature <number>`. Where `phase` fails, the scaffold is out of date: `/kordal-plan-update` comes first.
 
 When one fails, tell the owner which one and what has to happen first, and end the run.
 

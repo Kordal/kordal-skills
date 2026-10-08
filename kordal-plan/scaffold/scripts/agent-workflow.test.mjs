@@ -1,20 +1,19 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { baseBranch, section, validateManifest } from './agent-workflow.mjs';
+import { baseBranch, mirrorsIssues, section, validateManifest } from './agent-workflow.mjs';
 
 // A hook or `git rebase --exec` exports these: the fixture's Git would then write into the caller's repository.
 for (const name of ['GIT_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE', 'GIT_PREFIX', 'GIT_COMMON_DIR', 'GIT_OBJECT_DIRECTORY', 'GIT_ALTERNATE_OBJECT_DIRECTORIES', 'GIT_NAMESPACE', 'GIT_CEILING_DIRECTORIES']) delete process.env[name];
 
 // validateManifest against an in-memory repository: two tasks, the second
 // depending on the first and owning an ADR.
-const sections = ['Goal', 'Context', 'Task Contract', 'Scope', 'Out of Scope', 'Affected Components', 'Acceptance Criteria', 'Flow', 'Implementation Steps', 'Tests', 'Risks', 'Review', 'Completion Notes'];
+const sections = ['Goal', 'Acceptance Criteria', 'Flow', 'Out of Scope', 'Affected Components', 'Review', 'Notes'];
 const adr = 'docs/adr/001-storage.md';
 const body = (task, heading, done) => {
-  if (heading === 'Task Contract') return `Issue: ${task.issue ? `#${task.issue}` : 'none'}\n\nDependencies: ${task.depends_on.join(', ') || 'none'}\n`;
   if (heading === 'Acceptance Criteria') return `- [${done ? 'x' : ' '}] Works`;
-  return ['Review', 'Completion Notes'].includes(heading) && !done ? 'Pending.' : 'Text.';
+  return ['Review', 'Notes'].includes(heading) && !done ? 'Pending.' : 'Text.';
 };
-const plan = (task, done = false) => `# ${task.id}: ${task.title}\n\n` + sections.map(s => `## ${s}\n\n${body(task, s, done)}\n`).join('\n');
+const plan = (task, done = false) => `# ${task.id}: ${task.title}\n\nIssue: ${task.issue ? `#${task.issue}` : 'none'}\n\n` + sections.map(s => `## ${s}\n\n${body(task, s, done)}\n`).join('\n');
 function fixture() {
   const tasks = [
     { id: 'CAP-001', title: 'Identity', slug: 'identity', issue: null, depends_on: [], adrs: [] },
@@ -71,6 +70,15 @@ test('task IDs, issues and dependencies are well formed and acyclic', () => {
   assert.throws(f.check, /Invalid\/duplicate issue: CAP-002/, 'an issue needs a repository');
   f = fixture(); f.manifest.repository = 'product';
   assert.throws(f.check, /Invalid repository/);
+  f = fixture(); f.manifest.issues = false;
+  f.check();
+  assert.equal(mirrorsIssues(f.manifest), false, 'issues off: the branch is pushed, no issue is written');
+  f.manifest.issues = true;
+  assert.equal(mirrorsIssues(f.manifest), true);
+  delete f.manifest.issues;
+  assert.equal(mirrorsIssues(f.manifest), true, 'issues are on by default where a repository is named');
+  f.manifest.issues = 'no';
+  assert.throws(f.check, /Invalid issues/);
   f = fixture(); f.tasks[1].depends_on = ['CAP-009']; f.files['docs/plans/planned/CAP-002-freshness.md'] = plan(f.tasks[1]);
   assert.throws(f.check, /Unknown dependency CAP-009/);
   f = fixture(); f.tasks[0].depends_on = ['CAP-002']; f.files['docs/plans/planned/CAP-001-identity.md'] = plan(f.tasks[0]);
@@ -84,14 +92,16 @@ test('every task has one plan that agrees with the manifest', () => {
   f = fixture(); f.tasks[0].title = 'Renamed';
   assert.throws(f.check, /CAP-001 plan title differs from manifest/);
   f = fixture(); f.tasks[1].depends_on = [];
-  assert.throws(f.check, /CAP-002 plan dependencies differ from manifest/);
+  f.check();
   f = fixture(); f.tasks[1].issue = 8;
   assert.throws(f.check, /CAP-002 plan issue differs from manifest/);
 });
-test('a plan fills every section; a comment is not content', () => {
+test('a plan fills every required section, a Flow is optional, and a comment is not content', () => {
   const f = fixture();
-  f.files['docs/plans/planned/CAP-001-identity.md'] = plan(f.tasks[0]).replace('## Risks\n\nText.', '## Risks\n\n<!-- Known risks. -->');
-  assert.throws(f.check, /CAP-001 missing section: Risks/);
+  f.files['docs/plans/planned/CAP-001-identity.md'] = plan(f.tasks[0]).replace('## Flow\n\nText.\n', '');
+  f.check();
+  f.files['docs/plans/planned/CAP-001-identity.md'] = plan(f.tasks[0]).replace('## Out of Scope\n\nText.', '## Out of Scope\n\n<!-- Exclusions. -->');
+  assert.throws(f.check, /CAP-001 missing section: Out of Scope/);
   assert.equal(section('## A\n\n<!-- hint -->\n\n## B\n\nText.\n', 'A'), '');
 });
 test('a completed task has met criteria, a recorded review, completion notes and Accepted ADRs', () => {
@@ -99,8 +109,12 @@ test('a completed task has met criteria, a recorded review, completion notes and
   f.check();
   f.files['docs/plans/completed/CAP-001-identity.md'] = plan(f.tasks[0], true).replace('- [x] Works', '- [x] Works\n- [ ] Fails safely');
   assert.throws(f.check, /CAP-001 has incomplete acceptance criteria/);
-  f.files['docs/plans/completed/CAP-001-identity.md'] = plan(f.tasks[0], true).replace('## Completion Notes\n\nText.', '## Completion Notes\n\nPending.');
-  assert.throws(f.check, /CAP-001 missing completion Completion Notes/);
+  f.files['docs/plans/completed/CAP-001-identity.md'] = plan(f.tasks[0], true).replace('## Notes\n\nText.', '## Notes\n\nPending.');
+  assert.throws(f.check, /CAP-001 missing completion Notes/);
+  f.files['docs/plans/completed/CAP-001-identity.md'] = plan(f.tasks[0], true).replace('## Notes\n\nText.', '## Completion Notes\n\nText.');
+  f.check();
+  f.files['docs/plans/completed/CAP-001-identity.md'] = plan(f.tasks[0], true).replace('## Notes\n\nText.', '## Completion Notes\n\nPending.');
+  assert.throws(f.check, /CAP-001 missing completion Notes/, 'a plan written before the rename keeps its Completion Notes');
   f.files['docs/plans/completed/CAP-001-identity.md'] = plan(f.tasks[0], true).replace('## Review\n\nText.', '## Review\n\nPending.');
   assert.throws(f.check, /CAP-001 missing completion Review/, 'an unreviewed task is not complete');
   f = fixture(); complete(f, f.tasks[0]); complete(f, f.tasks[1]);
